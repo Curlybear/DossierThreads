@@ -102,10 +102,14 @@ int main(int argc, char* argv[])
 
     while(!ok) {
         event = ReadEvent();
-        if (event.type == CROIX)
+        if (event.type == CROIX) {
             ok = 1;
-        if (event.type == CLIC_GAUCHE)
-            DessineSprite(event.ligne, event.colonne, WAGNER);
+        }
+        if (event.type == CLIC_GAUCHE) {
+            if(event.colonne < 10) {
+                DessineSprite(event.ligne, event.colonne, WAGNER);
+            }
+        }
     }
 
     // Fermeture de la grille de jeu (SDL)
