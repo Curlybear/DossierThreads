@@ -206,6 +206,7 @@ void* threadEvent(void*){
                 printf("(THREAD EVENT) Clic droit\n");
                 pthread_mutex_lock(&mutexPiecesEnCours);
                 if(nbCasesInserees == 0) {
+                    pthread_mutex_unlock(&mutexPiecesEnCours);
                     break;
                 }
                 --nbCasesInserees;
