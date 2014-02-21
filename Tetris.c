@@ -187,8 +187,9 @@ void rotationPiece(PIECE *piece) {
         }
     }
 
-    // TODO Trier les cases et les translater pour que leur valeurs soient positives
+    // TODO Trier les cases
     for (i = 0; i < piece->nbCases; ++i) {
-
+        piece->cases[i].colonne += -lessColonne;
+        piece->cases[i].ligne += -lessLigne;
     }
 }
