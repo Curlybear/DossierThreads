@@ -21,6 +21,7 @@
 
 void setMessage(const char *texte);
 void* defileMessage(void*);
+void* lectureEvent(void*);
 char getCharFromMessage(int index);
 
 int tab[NB_LIGNES][NB_COLONNES]
@@ -72,10 +73,11 @@ int main(int argc, char* argv[])
 {
     pthread_mutex_init(&mutexMessage, NULL);
 
-    EVENT_GRILLE_SDL event;
     char buffer[80];
     char ok;
     pthread_t threadDefileMessage;
+    pthread_t threadPiece;
+    pthread_t threadEvent;
 
     srand((unsigned)time(NULL));
 
@@ -98,20 +100,16 @@ int main(int argc, char* argv[])
     }
     pthread_detach(threadDefileMessage);
 
-    ok = 0;
+    //if((errno = pthread_create(&threadPiece, NULL, rotationPiece, NULL)) != 0) {
+    //    perror("Erreur de lancement de thread");
+    //}
+    //pthread_detach(threadPiece);
 
-    while(!ok) {
-        event = ReadEvent();
-        if (event.type == CROIX) {
-            ok = 1;
-        }
-        if (event.type == CLIC_GAUCHE) {
-            if(event.colonne < 10) {
-                DessineSprite(event.ligne, event.colonne, WAGNER);
-            }
-        }
+	if((errno = pthread_create(&threadEvent, NULL, lectureEvent, NULL)) != 0) {
+        perror("Erreur de lancement de thread");
     }
 
+    pthread_join(threadEvent,NULL); // Attente de la fin du threadEvent. Le threadEvent se termine quand le joueur clique sur la croix.
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille..."); fflush(stdout);
     FermerGrilleSDL();
@@ -155,6 +153,26 @@ void* defileMessage(void*) {
         nanosleep(&t, NULL);
     }
 }
+
+void* lectureEvent(void*){
+
+    printf("(THREAD MESSAGE) Lancement du thread lectureEvent\n");
+    EVENT_GRILLE_SDL event;
+    int ok = 0;
+
+    while(!ok) {
+        event = ReadEvent();
+        if (event.type == CROIX) {
+            ok = 1;
+        }
+        if (event.type == CLIC_GAUCHE) {
+            if(event.colonne < 10) {
+                DessineSprite(event.ligne, event.colonne, WAGNER);
+            }
+        }
+    }
+}
+
 
 char getCharFromMessage(int index) {
     return message[index % (tailleMessage+1)];
