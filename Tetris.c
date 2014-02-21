@@ -167,8 +167,7 @@ void* threadDefileMessage(void*) {
 
 void* threadPiece(void*) {
     pthread_mutex_lock(&mutexPiecesEnCours);
-    PIECE pieceEnCours = pieces[random(0, 6)];
-    printf("(THREAD PIECE) %d\n", pieceEnCours.professeur);
+    pieceEnCours = pieces[random(0, 6)];
     // Attente de l'insertion de quatre cases
     while(nbCasesInserees < pieceEnCours.nbCases) {
         pthread_cond_wait(&condNbPiecesEnCours, &mutexPiecesEnCours);
