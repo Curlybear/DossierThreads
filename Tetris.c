@@ -172,8 +172,8 @@ void rotationPiece(PIECE *piece) {
     CASE tmpCase;
     for(i = 0; i < piece->nbCases; ++i) {
         // Rotation de la case i
-        tmpCase.ligne = piece->cases[i].colonne * 0 + piece->cases[i].ligne * 1;
-        tmpCase.colonne = piece->cases[i].colonne * -1 + piece->cases[i].ligne * 0;
+        tmpCase.ligne = -piece->cases[i].colonne;
+        tmpCase.colonne = piece->cases[i].ligne;
 
         // Insertion
         piece->cases[i] = tmpCase;
@@ -187,7 +187,7 @@ void rotationPiece(PIECE *piece) {
         }
     }
 
-    // TODO Trier les cases
+    // Translation pour garder des coordonnées positives
     for (i = 0; i < piece->nbCases; ++i) {
         piece->cases[i].colonne += -smallestColonne;
         piece->cases[i].ligne += -smallestLigne;
