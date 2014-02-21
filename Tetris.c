@@ -204,7 +204,7 @@ void rotationPiece(PIECE *piece) {
                 indiceSmallest = j;
             }
         }
-        piece[indiceSmallest] = piece[i]
-        piece[i] = tmpCase;
+        piece->cases[indiceSmallest] = piece->cases[i];
+        piece->cases[i] = tmpCase;
     }
 }
