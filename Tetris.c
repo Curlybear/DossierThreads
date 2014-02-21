@@ -39,17 +39,15 @@ int tab[NB_LIGNES][NB_COLONNES]
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-typedef struct
-{
-  int ligne;
-  int colonne;
+typedef struct {
+    int ligne;
+    int colonne;
 } CASE;
 
-typedef struct
-{
-  CASE cases[NB_CASES];
-  int  nbCases;
-  int  professeur;
+typedef struct {
+    CASE cases[NB_CASES];
+    int  nbCases;
+    int  professeur;
 } PIECE;
 
 PIECE pieces[7] = { 0, 0, 0, 1, 1, 0, 1, 1, 4, WAGNER,       // carre
@@ -74,7 +72,7 @@ int main(int argc, char* argv[])
 
     EVENT_GRILLE_SDL event;
     char buffer[80];
-    char ok;
+    char ok = 0;
     pthread_t threadDefileMessage;
 
     srand((unsigned)time(NULL));
@@ -97,8 +95,6 @@ int main(int argc, char* argv[])
         perror("Erreur de lancement de thread");
     }
     pthread_detach(threadDefileMessage);
-
-    ok = 0;
 
     while(!ok) {
         event = ReadEvent();
@@ -158,4 +154,41 @@ void* defileMessage(void*) {
 
 char getCharFromMessage(int index) {
     return message[index % (tailleMessage+1)];
+}
+
+void rotationPiece(PIECE *piece) {
+    if(piece->professeur == WAGNER) {
+        // Inutile de faire la rotation d'un carré
+        return;
+    }
+
+    // Multiplication par une matrice
+    // 0 -1
+    // 1  0
+
+    // Corresponde à la translation à effectuer après la rotation
+    int lessLigne = 0, lessColonne = 0;
+    int i;
+    CASE tmpCase;
+    for(i = 0; i < piece->nbCases; ++i) {
+        // Rotation de la case i
+        tmpCase.ligne = piece->cases[i].colonne * 0 + piece->cases[i].ligne * 1;
+        tmpCase.colonne = piece->cases[i].colonne * -1 + piece->cases[i].ligne * 0;
+
+        // Insertion
+        piece->cases[i] = tmpCase;
+
+        // Récupération de la translation à effectuer ensuite
+        if(tmpCase.ligne < lessLigne) {
+            lessLigne = tmpCase.ligne;
+        }
+        if(tmpCase.colonne < lessColonne) {
+            lessColonne = tmpCase.colonne;
+        }
+    }
+
+    // TODO Trier les cases et les translater pour que leur valeurs soient positives
+    for (i = 0; i < piece->nbCases; ++i) {
+
+    }
 }
