@@ -166,8 +166,8 @@ void rotationPiece(PIECE *piece) {
     // 0 -1
     // 1  0
 
-    // Corresponde à la translation à effectuer après la rotation
-    int lessLigne = 0, lessColonne = 0;
+    // Correspondent à la translation à effectuer après la rotation
+    int smallestLigne = 0, smallestColonne = 0;
     int i;
     CASE tmpCase;
     for(i = 0; i < piece->nbCases; ++i) {
@@ -179,17 +179,17 @@ void rotationPiece(PIECE *piece) {
         piece->cases[i] = tmpCase;
 
         // Récupération de la translation à effectuer ensuite
-        if(tmpCase.ligne < lessLigne) {
-            lessLigne = tmpCase.ligne;
+        if(tmpCase.ligne < smallestLigne) {
+            smallestLigne = tmpCase.ligne;
         }
-        if(tmpCase.colonne < lessColonne) {
-            lessColonne = tmpCase.colonne;
+        if(tmpCase.colonne < smallestColonne) {
+            smallestColonne = tmpCase.colonne;
         }
     }
 
     // TODO Trier les cases
     for (i = 0; i < piece->nbCases; ++i) {
-        piece->cases[i].colonne += -lessColonne;
-        piece->cases[i].ligne += -lessLigne;
+        piece->cases[i].colonne += -smallestColonne;
+        piece->cases[i].ligne += -smallestLigne;
     }
 }
