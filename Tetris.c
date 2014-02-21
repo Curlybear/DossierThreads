@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
        perror("Erreur de lancement de thread");
     }
 
-	if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
+    if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement de thread");
     }
 
@@ -195,9 +195,9 @@ void* threadEvent(void*){
                     casesInserees[nbCasesInserees].colonne = event.colonne;
                     ++nbCasesInserees;
                     tab[event.colonne][event.ligne] = 1;
-                    pthread_mutex_unlock(&mutexPiecesEnCours);
 
-                    DessineSprite(event.ligne, event.colonne, pieceEnCours.professeur);
+                    DessineSprite(event.colonne, event.ligne, pieceEnCours.professeur);
+                    pthread_mutex_unlock(&mutexPiecesEnCours);
                     pthread_cond_signal(&condNbPiecesEnCours);
                 }
                 break;
@@ -210,10 +210,11 @@ void* threadEvent(void*){
                 }
                 --nbCasesInserees;
                 tab[casesInserees[nbCasesInserees].colonne][casesInserees[nbCasesInserees].ligne] = 0;
-                pthread_mutex_unlock(&mutexPiecesEnCours);
 
-                EffaceCarre(event.ligne, event.colonne);
+                EffaceCarre(casesInserees[nbCasesInserees].ligne, casesInserees[nbCasesInserees].colonne);
+                pthread_mutex_unlock(&mutexPiecesEnCours);
                 pthread_cond_signal(&condNbPiecesEnCours);
+
                 break;
         }
     }
