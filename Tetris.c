@@ -20,8 +20,8 @@
 #define VIDE        0
 
 void setMessage(const char *texte);
-void* defileMessage(void*);
-void* lectureEvent(void*);
+void* threadDefileMessage(void*);
+void* threadEvent(void*);
 char getCharFromMessage(int index);
 
 int tab[NB_LIGNES][NB_COLONNES]
@@ -62,6 +62,9 @@ PIECE pieces[7] = { 0, 0, 0, 1, 1, 0, 1, 1, 4, WAGNER,       // carre
 char* message = NULL; // pointeur vers le message à faire défiler
 int tailleMessage; // longueur du message
 int indiceCourant; // indice du premier caractère à afficher dans la zone graphique
+PIECE pieceEnCours; // Pièce en cours de placement
+CASE casesInserees[NB_CASES]; // cases insérées par le joueur
+int nbCasesInserees;  // nombre de cases actuellement insérées par le joueur.
 
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 
@@ -73,9 +76,9 @@ int main(int argc, char* argv[])
 
     char buffer[80];
     char ok = 0;
-    pthread_t threadDefileMessage;
-    pthread_t threadPiece;
-    pthread_t threadEvent;
+    pthread_t defileMessageHandle;
+    pthread_t pieceHandle;
+    pthread_t eventHandle;
 
     srand((unsigned)time(NULL));
 
@@ -93,21 +96,21 @@ int main(int argc, char* argv[])
     ChargementImages();
     DessineSprite(12, 11, VOYANT_VERT);
 
-    if((errno = pthread_create(&threadDefileMessage, NULL, defileMessage, NULL)) != 0) {
+    if((errno = pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL)) != 0) {
         perror("Erreur de lancement de thread");
     }
-    pthread_detach(threadDefileMessage);
+    pthread_detach(defileMessageHandle);
 
-    //if((errno = pthread_create(&threadPiece, NULL, rotationPiece, NULL)) != 0) {
+    //if((errno = pthread_create(&pieceHandle, NULL, rotationPiece, NULL)) != 0) {
     //    perror("Erreur de lancement de thread");
     //}
-    //pthread_detach(threadPiece);
+    //pthread_detach(pieceHandle);
 
-	if((errno = pthread_create(&threadEvent, NULL, lectureEvent, NULL)) != 0) {
+	if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement de thread");
     }
 
-    pthread_join(threadEvent,NULL); // Attente de la fin du threadEvent. Le threadEvent se termine quand le joueur clique sur la croix.
+    pthread_join(eventHandle, NULL); // Attente de la fin du threadEvent. Le threadEvent se termine quand le joueur clique sur la croix.
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille..."); fflush(stdout);
     FermerGrilleSDL();
@@ -128,7 +131,7 @@ void setMessage(const char *text) {
     pthread_mutex_unlock(&mutexMessage);
 }
 
-void* defileMessage(void*) {
+void* threadDefileMessage(void*) {
     int i;
     struct timespec t;
     printf("(THREAD MESSAGE) Lancement du thread message\n");
@@ -152,9 +155,9 @@ void* defileMessage(void*) {
     }
 }
 
-void* lectureEvent(void*){
+void* threadEvent(void*){
 
-    printf("(THREAD MESSAGE) Lancement du thread lectureEvent\n");
+    printf("(THREAD MESSAGE) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
     int ok = 0;
 
