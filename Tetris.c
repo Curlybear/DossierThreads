@@ -60,7 +60,7 @@ int tailleMessage; // longueur du message
 int indiceCourant; // indice du premier caractère à afficher dans la zone graphique
 PIECE pieceEnCours; // Pièce en cours de placement
 CASE casesInserees[NB_CASES]; // cases insérées par le joueur
-int nbCasesInserees;  // nombre de cases actuellement insérées par le joueur.
+int nbCasesInserees = 0;  // nombre de cases actuellement insérées par le joueur.
 
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 pthread_mutex_t mutexPiecesEnCours;
@@ -119,8 +119,8 @@ int main(int argc, char* argv[])
     if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement de thread");
     }
-
     pthread_join(eventHandle, NULL); // Attente de la fin du threadEvent. Le threadEvent se termine quand le joueur clique sur la croix.
+
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille..."); fflush(stdout);
     FermerGrilleSDL();
@@ -168,11 +168,12 @@ void* threadDefileMessage(void*) {
 void* threadPiece(void*) {
     pthread_mutex_lock(&mutexPiecesEnCours);
     PIECE pieceEnCours = pieces[random(0, 6)];
-    nbCasesInserees = 0;
+    printf("(THREAD PIECE) %d\n", pieceEnCours.professeur);
     // Attente de l'insertion de quatre cases
-    while(nbCasesInserees < 4) {
+    while(nbCasesInserees < pieceEnCours.nbCases) {
         pthread_cond_wait(&condNbPiecesEnCours, &mutexPiecesEnCours);
     }
+    nbCasesInserees = 0;
     pthread_mutex_unlock(&mutexPiecesEnCours);
     printf("(THREAD PIECE) OK\n");
 }
@@ -196,7 +197,7 @@ void* threadEvent(void*){
                     ++nbCasesInserees;
                     tab[event.colonne][event.ligne] = 1;
 
-                    DessineSprite(event.colonne, event.ligne, pieceEnCours.professeur);
+                    DessineSprite(event.ligne, event.colonne, pieceEnCours.professeur);
                     pthread_mutex_unlock(&mutexPiecesEnCours);
                     pthread_cond_signal(&condNbPiecesEnCours);
                 }
