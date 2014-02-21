@@ -63,19 +63,27 @@ CASE casesInserees[NB_CASES]; // cases insérées par le joueur
 int nbCasesInserees;  // nombre de cases actuellement insérées par le joueur.
 
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
+pthread_mutex_t mutexPiecesEnCours;
+
+pthread_cond_t condNbPiecesEnCours;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void setMessage(const char*);
 void* threadDefileMessage(void*);
+void* threadPiece(void*);
 void* threadEvent(void*);
 char getCharFromMessage(int);
 void rotationPiece(PIECE*);
 void triPiece(PIECE*);
+int random(int, int);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
     pthread_mutex_init(&mutexMessage, NULL);
+    pthread_mutex_init(&mutexPiecesEnCours, NULL);
+
+    pthread_cond_init(&condNbPiecesEnCours, NULL);
 
     char buffer[80];
     char ok = 0;
@@ -104,10 +112,9 @@ int main(int argc, char* argv[])
     }
     pthread_detach(defileMessageHandle);
 
-    //if((errno = pthread_create(&pieceHandle, NULL, rotationPiece, NULL)) != 0) {
-    //    perror("Erreur de lancement de thread");
-    //}
-    //pthread_detach(pieceHandle);
+    if((errno = pthread_create(&pieceHandle, NULL, threadPiece, NULL)) != 0) {
+       perror("Erreur de lancement de thread");
+    }
 
 	if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement de thread");
@@ -158,19 +165,51 @@ void* threadDefileMessage(void*) {
     }
 }
 
+void* threadPiece(void*) {
+    pthread_mutex_lock(&mutexPiecesEnCours);
+    PIECE pieceEnCours = pieces[random(0, 6)];
+    nbCasesInserees = 0;
+    // Attente de l'insertion de quatre cases
+    while(nbCasesInserees < 4) {
+        pthread_cond_wait(&condNbPiecesEnCours, &mutexPiecesEnCours);
+    }
+    pthread_mutex_unlock(&mutexPiecesEnCours);
+    printf("(THREAD PIECE) OK\n");
+}
+
 void* threadEvent(void*){
-    printf("(THREAD MESSAGE) Lancement du thread threadEvent\n");
+    printf("(THREAD EVENT) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
 
     for(;;) {
         event = ReadEvent();
-        if (event.type == CROIX) {
-            break;
-        }
-        if (event.type == CLIC_GAUCHE) {
-            if(event.colonne < 10) {
-                DessineSprite(event.ligne, event.colonne, WAGNER);
-            }
+        switch(event.type) {
+            case CROIX:
+                return NULL;
+
+            case CLIC_GAUCHE:
+                if(event.colonne < 10 && tab[event.colonne][event.ligne] == 0) {
+                    pthread_mutex_lock(&mutexPiecesEnCours);
+                    casesInserees[nbCasesInserees].ligne = event.ligne;
+                    casesInserees[nbCasesInserees].colonne = event.colonne;
+                    ++nbCasesInserees;
+                    tab[event.colonne][event.ligne] = 1;
+                    pthread_mutex_unlock(&mutexPiecesEnCours);
+
+                    DessineSprite(event.ligne, event.colonne, pieceEnCours.professeur);
+                    pthread_cond_signal(&condNbPiecesEnCours);
+                }
+                break;
+
+            case CLIC_DROIT:
+                pthread_mutex_lock(&mutexPiecesEnCours);
+                --nbCasesInserees;
+                tab[casesInserees[nbCasesInserees].colonne][casesInserees[nbCasesInserees].ligne] = 0;
+                pthread_mutex_unlock(&mutexPiecesEnCours);
+
+                EffaceCarre(event.ligne, event.colonne);
+                pthread_cond_signal(&condNbPiecesEnCours);
+                break;
         }
     }
 }
@@ -238,4 +277,8 @@ void triPiece(PIECE *piece) {
         piece->cases[indiceSmallest] = piece->cases[i];
         piece->cases[i] = tmpCase;
     }
+}
+
+int random(int min, int max) {
+    return min + rand() % (max - min);
 }
