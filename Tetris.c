@@ -19,11 +19,6 @@
 // Macros utlisees dans le tableau tab
 #define VIDE        0
 
-void setMessage(const char *texte);
-void* threadDefileMessage(void*);
-void* threadEvent(void*);
-char getCharFromMessage(int index);
-
 int tab[NB_LIGNES][NB_COLONNES]
  ={ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -59,6 +54,7 @@ PIECE pieces[7] = { 0, 0, 0, 1, 1, 0, 1, 1, 4, WAGNER,       // carre
                     0, 0, 0, 1, 0, 2, 1, 1, 4, CHARLET,      // T
                     0, 0, 0, 1, 0, 2, 0, 3, 4, MADANI };     // I
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 char* message = NULL; // pointeur vers le message à faire défiler
 int tailleMessage; // longueur du message
 int indiceCourant; // indice du premier caractère à afficher dans la zone graphique
@@ -68,6 +64,13 @@ int nbCasesInserees;  // nombre de cases actuellement insérées par le joueur.
 
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void setMessage(const char*);
+void* threadDefileMessage(void*);
+void* threadEvent(void*);
+char getCharFromMessage(int);
+void rotationPiece(PIECE*);
+void triPiece(PIECE*);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
@@ -156,15 +159,13 @@ void* threadDefileMessage(void*) {
 }
 
 void* threadEvent(void*){
-
     printf("(THREAD MESSAGE) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
-    int ok = 0;
 
-    while(!ok) {
+    for(;;) {
         event = ReadEvent();
         if (event.type == CROIX) {
-            ok = 1;
+            break;
         }
         if (event.type == CLIC_GAUCHE) {
             if(event.colonne < 10) {
@@ -192,7 +193,7 @@ void rotationPiece(PIECE *piece) {
     // Correspondent à la translation à effectuer après la rotation
     int smallestLigne = 0, smallestColonne = 0;
     CASE tmpCase;
-    int i, j, indiceSmallest;
+    int i;
 
     for(i = 0; i < piece->nbCases; ++i) {
         // Rotation de la case i
@@ -216,6 +217,13 @@ void rotationPiece(PIECE *piece) {
         piece->cases[i].colonne += -smallestColonne;
         piece->cases[i].ligne += -smallestLigne;
     }
+
+    triPiece(piece);
+}
+
+void triPiece(PIECE *piece) {
+    int i, j, indiceSmallest;
+    CASE tmpCase;
 
     tmpCase = piece->cases[0];
     for (i = 0; i < piece->nbCases; ++i) {
