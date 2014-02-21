@@ -189,6 +189,7 @@ void* threadEvent(void*){
 
             case CLIC_GAUCHE:
                 if(event.colonne < 10 && tab[event.colonne][event.ligne] == 0) {
+                    printf("(THREAD EVENT) Clic gauche\n");
                     pthread_mutex_lock(&mutexPiecesEnCours);
                     casesInserees[nbCasesInserees].ligne = event.ligne;
                     casesInserees[nbCasesInserees].colonne = event.colonne;
@@ -202,7 +203,11 @@ void* threadEvent(void*){
                 break;
 
             case CLIC_DROIT:
+                printf("(THREAD EVENT) Clic droit\n");
                 pthread_mutex_lock(&mutexPiecesEnCours);
+                if(nbCasesInserees == 0) {
+                    break;
+                }
                 --nbCasesInserees;
                 tab[casesInserees[nbCasesInserees].colonne][casesInserees[nbCasesInserees].ligne] = 0;
                 pthread_mutex_unlock(&mutexPiecesEnCours);
