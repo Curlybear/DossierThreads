@@ -40,17 +40,15 @@ int tab[NB_LIGNES][NB_COLONNES]
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-typedef struct
-{
-  int ligne;
-  int colonne;
+typedef struct {
+    int ligne;
+    int colonne;
 } CASE;
 
-typedef struct
-{
-  CASE cases[NB_CASES];
-  int  nbCases;
-  int  professeur;
+typedef struct {
+    CASE cases[NB_CASES];
+    int  nbCases;
+    int  professeur;
 } PIECE;
 
 PIECE pieces[7] = { 0, 0, 0, 1, 1, 0, 1, 1, 4, WAGNER,       // carre
@@ -74,7 +72,7 @@ int main(int argc, char* argv[])
     pthread_mutex_init(&mutexMessage, NULL);
 
     char buffer[80];
-    char ok;
+    char ok = 0;
     pthread_t threadDefileMessage;
     pthread_t threadPiece;
     pthread_t threadEvent;
@@ -176,4 +174,57 @@ void* lectureEvent(void*){
 
 char getCharFromMessage(int index) {
     return message[index % (tailleMessage+1)];
+}
+
+void rotationPiece(PIECE *piece) {
+    if(piece->professeur == WAGNER) {
+        // Inutile de faire la rotation d'un carré
+        return;
+    }
+
+    // Multiplication par une matrice
+    // 0 -1
+    // 1  0
+
+    // Correspondent à la translation à effectuer après la rotation
+    int smallestLigne = 0, smallestColonne = 0;
+    CASE tmpCase;
+    int i, j, indiceSmallest;
+
+    for(i = 0; i < piece->nbCases; ++i) {
+        // Rotation de la case i
+        tmpCase.ligne = -piece->cases[i].colonne;
+        tmpCase.colonne = piece->cases[i].ligne;
+
+        // Insertion
+        piece->cases[i] = tmpCase;
+
+        // Récupération de la translation à effectuer ensuite
+        if(tmpCase.ligne < smallestLigne) {
+            smallestLigne = tmpCase.ligne;
+        }
+        if(tmpCase.colonne < smallestColonne) {
+            smallestColonne = tmpCase.colonne;
+        }
+    }
+
+    // Translation pour garder des coordonnées positives
+    for (i = 0; i < piece->nbCases; ++i) {
+        piece->cases[i].colonne += -smallestColonne;
+        piece->cases[i].ligne += -smallestLigne;
+    }
+
+    tmpCase = piece->cases[0];
+    for (i = 0; i < piece->nbCases; ++i) {
+        for (j = i; j < piece->nbCases; ++j) {
+            if(piece->cases[j].ligne < tmpCase.ligne ||
+                    piece->cases[j].colonne < tmpCase.colonne
+                    && piece->cases[j].ligne >= tmpCase.ligne) {
+                tmpCase = piece->cases[j];
+                indiceSmallest = j;
+            }
+        }
+        piece->cases[indiceSmallest] = piece->cases[i];
+        piece->cases[i] = tmpCase;
+    }
 }
