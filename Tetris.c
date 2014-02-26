@@ -183,6 +183,7 @@ void* threadPiece(void*) {
             for(i = 0; i < random(0, 4); ++i) {
                 rotationPiece(&pieceEnCours);
             }
+            // TODO Clean le carré wesh
             for (i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 4,
                     pieceEnCours.cases[i].colonne + 16, pieceEnCours.professeur);
@@ -213,7 +214,7 @@ void* threadPiece(void*) {
         }
         triPiece(&tmp);
 
-        if(comparaisonPiece(pieceEnCours.cases, casesInserees, nbCasesInserees)) {
+        if(comparaisonPiece(pieceEnCours.cases, tmp.cases, nbCasesInserees)) {
             setPiece(casesInserees, BRIQUE, nbCasesInserees);
             shouldNewPiece = 1;
             printf("(THREAD PIECE) Yipee!\n");
