@@ -74,7 +74,7 @@ void* threadPiece(void*);
 void* threadEvent(void*);
 char getCharFromMessage(int);
 void rotationPiece(PIECE*);
-void triPiece(PIECE*);
+int compareCase(const void*, const void*);
 int random(int, int);
 int comparaisonPiece(CASE[], CASE[], int);
 void setPiece(CASE[], int, int);
@@ -179,6 +179,9 @@ void* threadPiece(void*) {
     for(;;) {
         pthread_mutex_lock(&mutexPiecesEnCours);
         if(shouldNewPiece) {
+            for (i = 0; i < pieceEnCours.nbCases; ++i) {
+                EffaceCarre(pieceEnCours.cases[i].ligne + 4, pieceEnCours.cases[i].colonne + 16);
+            }
             pieceEnCours = pieces[random(0, 6)];
             for(i = 0; i < random(0, 4); ++i) {
                 rotationPiece(&pieceEnCours);
@@ -212,7 +215,7 @@ void* threadPiece(void*) {
             tmp.cases[i].ligne -= minY;
             tmp.cases[i].colonne -= minX;
         }
-        triPiece(&tmp);
+        qsort(tmp.cases, tmp.nbCases, sizeof(CASE), compareCase);
 
         if(comparaisonPiece(pieceEnCours.cases, tmp.cases, nbCasesInserees)) {
             setPiece(casesInserees, BRIQUE, nbCasesInserees);
@@ -325,33 +328,30 @@ void rotationPiece(PIECE *piece) {
         piece->cases[i].ligne -= smallestLigne;
     }
 
-    triPiece(piece);
+    qsort(piece->cases, piece->nbCases, sizeof(CASE), compareCase);
 }
 
 /**
- * Trie les cases d'une pièces pour faciliter la comparaison
+ * Compare deux cases pour voir si l'une
+ * d'elle devrait être placée devant dans la liste de case de la pièce
  */
-void triPiece(PIECE *piece) {
-    int i, j, indiceSmallest;
-    CASE tmpCase;
+int compareCase(const void *a, const void *b) {
+    CASE *c1 = (CASE*) a;
+    CASE *c2 = (CASE*) b;
 
-    tmpCase = piece->cases[0];
-    for(i = 0; i < piece->nbCases; ++i) {
-        for(j = i; j < piece->nbCases; ++j) {
-            if(piece->cases[j].ligne < tmpCase.ligne ||
-                    piece->cases[j].colonne < tmpCase.colonne
-                    && piece->cases[j].ligne >= tmpCase.ligne) {
-                tmpCase = piece->cases[j];
-                indiceSmallest = j;
-                break;
-            }
-        }
-        // Échange uniquement une case à échanger à été trouvée
-        if(j != piece->nbCases) {
-            piece->cases[indiceSmallest] = piece->cases[i];
-            piece->cases[i] = tmpCase;
-        }
+    if(c1->ligne < c2->ligne) {
+        return -1;
     }
+    if(c1->ligne > c2->ligne) {
+        return 1;
+    }
+    if(c1->colonne < c2->colonne) {
+        return -1;
+    }
+    if(c1->colonne > c2->colonne) {
+        return 1;
+    }
+    return 0;
 }
 
 /**
