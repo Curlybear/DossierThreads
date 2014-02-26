@@ -76,6 +76,8 @@ char getCharFromMessage(int);
 void rotationPiece(PIECE*);
 void triPiece(PIECE*);
 int random(int, int);
+int comparaisonPiece(CASE[], CASE[], int);
+void setPiece(CASE[], int, int);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
@@ -155,7 +157,7 @@ void* threadDefileMessage(void*) {
     t.tv_nsec = 400000000;
     for(;;) {
         pthread_mutex_lock(&mutexMessage);
-        for (i = 11; i < 19; ++i) {
+        for(i = 11; i < 19; ++i) {
             DessineLettre(10, i, getCharFromMessage(i - 11 + indiceCourant));
         }
         ++indiceCourant;
@@ -171,15 +173,60 @@ void* threadDefileMessage(void*) {
  * Choisis une pièce aléatoire à insérer
  */
 void* threadPiece(void*) {
-    pthread_mutex_lock(&mutexPiecesEnCours);
-    pieceEnCours = pieces[random(0, 6)];
-    // Attente de l'insertion de quatre cases
-    while(nbCasesInserees < pieceEnCours.nbCases) {
-        pthread_cond_wait(&condNbPiecesEnCours, &mutexPiecesEnCours);
+    PIECE tmp;
+    int shouldNewPiece = 1;
+    int i, minX = NB_COLONNES, minY = NB_LIGNES;
+    for(;;) {
+        pthread_mutex_lock(&mutexPiecesEnCours);
+        if(shouldNewPiece) {
+            pieceEnCours = pieces[random(0, 6)];
+            for(i = 0; i < random(0, 4); ++i) {
+                rotationPiece(&pieceEnCours);
+            }
+            for (i = 0; i < pieceEnCours.nbCases; ++i) {
+                DessineSprite(pieceEnCours.cases[i].ligne + 4,
+                    pieceEnCours.cases[i].colonne + 16, pieceEnCours.professeur);
+            }
+        }
+        // Attente de l'insertion de quatre cases
+        while(nbCasesInserees < pieceEnCours.nbCases) {
+            pthread_cond_wait(&condNbPiecesEnCours, &mutexPiecesEnCours);
+        }
+
+        memcpy(tmp.cases, casesInserees, sizeof(casesInserees));
+        tmp.nbCases = nbCasesInserees;
+
+        // On ramène les coords en 0,0
+        minX = NB_COLONNES;
+        minY = NB_LIGNES;
+        for(i = 0; i < nbCasesInserees; ++i) {
+            if(casesInserees[i].ligne < minY) {
+                minY = casesInserees[i].ligne;
+            }
+            if(casesInserees[i].colonne < minX) {
+                minX = casesInserees[i].colonne;
+            }
+        }
+        for(i = 0; i < nbCasesInserees; ++i) {
+            tmp.cases[i].ligne -= minY;
+            tmp.cases[i].colonne -= minX;
+        }
+        triPiece(&tmp);
+
+        if(comparaisonPiece(pieceEnCours.cases, casesInserees, nbCasesInserees)) {
+            setPiece(casesInserees, BRIQUE, nbCasesInserees);
+            shouldNewPiece = 1;
+            printf("(THREAD PIECE) Yipee!\n");
+        } else {
+            setPiece(casesInserees, VIDE, nbCasesInserees);
+            shouldNewPiece = 0;
+            printf("(THREAD PIECE) Boohh!\n");
+        }
+
+        nbCasesInserees = 0;
+        pthread_mutex_unlock(&mutexPiecesEnCours);
+        printf("(THREAD PIECE) OK\n");
     }
-    nbCasesInserees = 0;
-    pthread_mutex_unlock(&mutexPiecesEnCours);
-    printf("(THREAD PIECE) OK\n");
 }
 
 /**
@@ -273,9 +320,9 @@ void rotationPiece(PIECE *piece) {
     }
 
     // Translation pour garder des coordonnées positives
-    for (i = 0; i < piece->nbCases; ++i) {
-        piece->cases[i].colonne += -smallestColonne;
-        piece->cases[i].ligne += -smallestLigne;
+    for(i = 0; i < piece->nbCases; ++i) {
+        piece->cases[i].colonne -= smallestColonne;
+        piece->cases[i].ligne -= smallestLigne;
     }
 
     triPiece(piece);
@@ -289,8 +336,8 @@ void triPiece(PIECE *piece) {
     CASE tmpCase;
 
     tmpCase = piece->cases[0];
-    for (i = 0; i < piece->nbCases; ++i) {
-        for (j = i; j < piece->nbCases; ++j) {
+    for(i = 0; i < piece->nbCases; ++i) {
+        for(j = i; j < piece->nbCases; ++j) {
             if(piece->cases[j].ligne < tmpCase.ligne ||
                     piece->cases[j].colonne < tmpCase.colonne
                     && piece->cases[j].ligne >= tmpCase.ligne) {
@@ -308,4 +355,31 @@ void triPiece(PIECE *piece) {
  */
 int random(int min, int max) {
     return min + rand() % (max - min);
+}
+
+/**
+ * Compare les coordonées de deux pièces via les coords de leurs cases
+ */
+int comparaisonPiece(CASE p1[], CASE p2[], int nbCases) {
+    for(int i = 0; i < nbCases; ++i) {
+        if(p1[i].ligne != p2[i].ligne || p1[i].colonne != p2[i].colonne) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/**
+ * Modifie toutes les cases d'une pièce avec le type souhaité
+ */
+void setPiece(CASE cases[], int type, int nbCases) {
+    for(int i = 0; i < nbCases; ++i) {
+        if (type == VIDE) {
+            printf("%d - %d, %d\n", type, cases[i].ligne, cases[i].colonne);
+            EffaceCarre(cases[i].ligne, cases[i].colonne);
+            tab[cases[i].colonne][cases[i].ligne] = 0;
+        } else {
+            DessineSprite(cases[i].ligne, cases[i].colonne, type);
+        }
+    }
 }
