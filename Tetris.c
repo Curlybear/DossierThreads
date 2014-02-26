@@ -78,8 +78,7 @@ void triPiece(PIECE*);
 int random(int, int);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     pthread_mutex_init(&mutexMessage, NULL);
     pthread_mutex_init(&mutexPiecesEnCours, NULL);
 
@@ -129,6 +128,9 @@ int main(int argc, char* argv[])
     exit(0);
 }
 
+/**
+ * Set le message en cours de défilement
+ */
 void setMessage(const char *text) {
     pthread_mutex_lock(&mutexMessage);
     indiceCourant = 0;
@@ -165,6 +167,9 @@ void* threadDefileMessage(void*) {
     }
 }
 
+/**
+ * Choisis une pièce aléatoire à insérer
+ */
 void* threadPiece(void*) {
     pthread_mutex_lock(&mutexPiecesEnCours);
     pieceEnCours = pieces[random(0, 6)];
@@ -177,6 +182,9 @@ void* threadPiece(void*) {
     printf("(THREAD PIECE) OK\n");
 }
 
+/**
+ * Gestion des inputs souris
+ */
 void* threadEvent(void*){
     printf("(THREAD EVENT) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
@@ -221,11 +229,17 @@ void* threadEvent(void*){
     }
 }
 
-
+/**
+ * Retourne la partie du message défilant
+ * correspondant au défilement courant
+ */
 char getCharFromMessage(int index) {
     return message[index % (tailleMessage+1)];
 }
 
+/**
+ * Tourne une pièce
+ */
 void rotationPiece(PIECE *piece) {
     if(piece->professeur == WAGNER) {
         // Inutile de faire la rotation d'un carré
@@ -267,6 +281,9 @@ void rotationPiece(PIECE *piece) {
     triPiece(piece);
 }
 
+/**
+ * Trie les cases d'une pièces pour faciliter la comparaison
+ */
 void triPiece(PIECE *piece) {
     int i, j, indiceSmallest;
     CASE tmpCase;
@@ -286,6 +303,9 @@ void triPiece(PIECE *piece) {
     }
 }
 
+/**
+ * Retourne un nombre aléatoire entre bornes
+ */
 int random(int min, int max) {
     return min + rand() % (max - min);
 }
