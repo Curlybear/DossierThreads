@@ -225,7 +225,6 @@ void* threadPiece(void*) {
 
         nbCasesInserees = 0;
         pthread_mutex_unlock(&mutexPiecesEnCours);
-        printf("(THREAD PIECE) OK\n");
     }
 }
 
@@ -343,10 +342,14 @@ void triPiece(PIECE *piece) {
                     && piece->cases[j].ligne >= tmpCase.ligne) {
                 tmpCase = piece->cases[j];
                 indiceSmallest = j;
+                break;
             }
         }
-        piece->cases[indiceSmallest] = piece->cases[i];
-        piece->cases[i] = tmpCase;
+        // Échange uniquement une case à échanger à été trouvée
+        if(j != piece->nbCases) {
+            piece->cases[indiceSmallest] = piece->cases[i];
+            piece->cases[i] = tmpCase;
+        }
     }
 }
 
@@ -375,7 +378,6 @@ int comparaisonPiece(CASE p1[], CASE p2[], int nbCases) {
 void setPiece(CASE cases[], int type, int nbCases) {
     for(int i = 0; i < nbCases; ++i) {
         if (type == VIDE) {
-            printf("%d - %d, %d\n", type, cases[i].ligne, cases[i].colonne);
             EffaceCarre(cases[i].ligne, cases[i].colonne);
             tab[cases[i].colonne][cases[i].ligne] = 0;
         } else {
