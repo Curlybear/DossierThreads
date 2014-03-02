@@ -61,23 +61,30 @@ int   indiceCourant;           // indice du premier caractère à afficher dans 
 PIECE pieceEnCours;            // Pièce en cours de placement
 CASE  casesInserees[NB_CASES]; // cases insérées par le joueur
 int   nbCasesInserees = 0;     // nombre de cases actuellement insérées par le joueur.
+char  majScore = 0;
+int   score = 0;
 
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 pthread_mutex_t mutexPiecesEnCours;
+pthread_mutex_t mutexScore;
 
 pthread_cond_t condNbPiecesEnCours;
+pthread_cond_t condScore;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void  setMessage(const char*);
-void *threadDefileMessage(void*);
-void *threadPiece(void*);
-void *threadEvent(void*);
 char  getCharFromMessage(int);
 void  rotationPiece(PIECE*);
 int   compareCase(const void*, const void*);
 int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
+
+// THREADS
+void *threadDefileMessage(void*);
+void *threadPiece(void*);
+void *threadEvent(void*);
+void *threadScore(void*);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
@@ -86,13 +93,16 @@ int main(int argc, char* argv[]) {
     pthread_t defileMessageHandle;
     pthread_t pieceHandle;
     pthread_t eventHandle;
+    pthread_t scoreHandle;
 
     srand((unsigned)time(NULL));
 
     pthread_mutex_init(&mutexMessage, NULL);
     pthread_mutex_init(&mutexPiecesEnCours, NULL);
+    pthread_mutex_init(&mutexScore, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
+    pthread_cond_init(&condScore, NULL);
 
     // Ouverture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Ouverture de la grille de jeu\n");
@@ -112,11 +122,12 @@ int main(int argc, char* argv[]) {
         perror("Erreur de lancement du threadDefileMessage");
     }
     pthread_detach(defileMessageHandle);
-
     if((errno = pthread_create(&pieceHandle, NULL, threadPiece, NULL)) != 0) {
        perror("Erreur de lancement du threadPiece");
     }
-
+    if((errno = pthread_create(&scoreHandle, NULL, threadScore, NULL)) != 0) {
+       perror("Erreur de lancement du threadScore");
+    }
     if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement du threadEvent");
     }
@@ -175,6 +186,7 @@ void* threadDefileMessage(void*) {
  * Choisis une pièce aléatoire à insérer
  */
 void* threadPiece(void*) {
+    printf("(THREAD PIECE) Lancement du thread Piece\n");
     PIECE tmp;
     int shouldNewPiece = 1;
     int i, minX = NB_COLONNES, minY = NB_LIGNES;
@@ -221,6 +233,14 @@ void* threadPiece(void*) {
         if(comparaisonPiece(pieceEnCours.cases, tmp.cases, nbCasesInserees)) {
             setPiece(casesInserees, BRIQUE, nbCasesInserees);
             shouldNewPiece = 1;
+
+            // Incrémentation du score
+            pthread_mutex_lock(&mutexScore);
+            ++score;
+            majScore = 1;
+            pthread_cond_signal(&condScore);
+            pthread_mutex_unlock(&mutexScore);
+
             printf("(THREAD PIECE) Yipee!\n");
         } else {
             setPiece(casesInserees, VIDE, nbCasesInserees);
@@ -278,6 +298,23 @@ void* threadEvent(void*){
                 break;
         }
     }
+}
+
+void *threadScore(void *a) {
+    printf("(THREAD SCORE) Lancement du thread Score\n");
+    char buff[5];
+    pthread_mutex_lock(&mutexScore);
+    while(!majScore) {
+        printf("(THREAD SCORE) MAJ du score : '%4d'\n", score);
+        pthread_cond_wait(&condScore, &mutexScore);
+        sprintf(buff, "%4d", score);
+        DessineSprite(1, 15, CHIFFRE_0 + (buff[0] == ' ' ? 0 : buff[0] - '0'));
+        DessineSprite(1, 16, CHIFFRE_0 + (buff[1] == ' ' ? 0 : buff[1] - '0'));
+        DessineSprite(1, 17, CHIFFRE_0 + (buff[2] == ' ' ? 0 : buff[2] - '0'));
+        DessineSprite(1, 18, CHIFFRE_0 + (buff[3] == ' ' ? 0 : buff[3] - '0'));
+        majScore = 0;
+    }
+    pthread_mutex_unlock(&mutexScore);
 }
 
 /**
