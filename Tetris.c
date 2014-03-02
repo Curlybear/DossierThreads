@@ -67,7 +67,7 @@ int   lignesCompletes[4];
 int   nbLignesCompletes;
 int   colonnesCompletes[4];
 int   nbColonnesCompletes;
-int   nbAnalyses;
+int   nbAnalyses = 0;
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
@@ -314,7 +314,8 @@ void* threadPiece(void*) {
             pthread_mutex_lock(&mutexAnalyse);
             nbColonnesCompletes = 0;
             nbLignesCompletes = 0;
-            nbAnalyses = 0;
+            /* Inutile, reset par le thread gravite...
+            nbAnalyses = 0; */
             pthread_mutex_unlock(&mutexAnalyse);
             i = 0;
             while(i < nbCasesInserees) {
@@ -350,7 +351,7 @@ void* threadEvent(void*) {
             case CLIC_GAUCHE:
                 pthread_mutex_lock(&mutexTab);
                 if(event.colonne < 10 && tab[event.ligne][event.colonne] == 0) {
-                    printf("(THREAD EVENT) Clic gauche\n");
+                    // printf("(THREAD EVENT) Clic gauche\n");
                     pthread_mutex_lock(&mutexPiecesEnCours);
                     casesInserees[nbCasesInserees].ligne = event.ligne;
                     casesInserees[nbCasesInserees].colonne = event.colonne;
@@ -365,7 +366,7 @@ void* threadEvent(void*) {
                 break;
 
             case CLIC_DROIT:
-                printf("(THREAD EVENT) Clic droit\n");
+                // printf("(THREAD EVENT) Clic droit\n");
                 pthread_mutex_lock(&mutexPiecesEnCours);
                 if(nbCasesInserees != 0) {
                     --nbCasesInserees;
@@ -425,9 +426,9 @@ void *threadCase(void *p) {
  * Applique la gravité si le threadCase à trouvé des lignes entières
  */
 void *threadGravite(void *p) {
-    int i;
+    int i, j, k;
     struct timespec t;
-    t.tv_sec = 2;
+    t.tv_sec = 1; // TODO 2 dans l'énoncé, on utilise 1 pour les tests...
     t.tv_nsec = 0;
 
     for (;;) {
@@ -443,16 +444,92 @@ void *threadGravite(void *p) {
             continue;
         }
 
+        printf("(THREAD GRAVITE) Starting...\n");
         // Attente de 2 secondes
         nanosleep(&t, NULL);
 
+        // TODO Tri des lignes/colonnes à déplacer pour éviter les pertes en cas de déplacements multiples
+        // TODO Suppression de la première/dernière ligne/colonne après chaque déplacement
+        // TODO Trouver un truc générique histoire de pas se taper le même code 4 fois...
+
         // Début de la gravité des lignes
         for(i = 0; i < nbLignesCompletes; ++i) {
+            printf("Suppression de la ligne %d\n", lignesCompletes[i]);
+            if(lignesCompletes[i] < 7) {
+                // Mouvement vers le bas
+                for(j = lignesCompletes[i]; j != 0; --j) {
+                    for(k = 0; k < NB_LIGNES; ++k) {
+                        pthread_mutex_lock(&mutexTab);
+                        tab[j][k] = tab[j-1][k];
+                        if(tab[j][k]) {
+                            DessineSprite(j, k, BRIQUE);
+                        } else {
+                            EffaceCarre(j, k);
+                        }
+                        pthread_mutex_unlock(&mutexTab);
+                    }
+                }
+            } else {
+                // Mouvement vers le haut
+                for(j = 8; j < lignesCompletes[i]; ++j) {
+                    for(k = 0; k < NB_LIGNES; ++k) {
+                        pthread_mutex_lock(&mutexTab);
+                        tab[j+1][k] = tab[j][k];
+                        if(tab[j][k]) {
+                            DessineSprite(j+1, k, BRIQUE);
+                        } else {
+                            EffaceCarre(j+1, k);
+                        }
+                        pthread_mutex_unlock(&mutexTab);
+                    }
+                }
+            }
         }
 
         // Début de la gravité des colonnes
         for(i = 0; i < nbColonnesCompletes; ++i) {
+            printf("Suppression de la colonne %d\n", colonnesCompletes[i]);
+            if(colonnesCompletes[i] < 7) {
+                // Mouvement vers la droite
+                for(j = 0; j < 14; ++j) { // TODO Parcourir du centre vers la gauche
+                    for(k = 0; k < colonnesCompletes[i]; ++k) {
+                        pthread_mutex_lock(&mutexTab);
+                        tab[j][k] = tab[j][k+1];
+                        if(tab[j][k]) {
+                            DessineSprite(j, k+1, BRIQUE);
+                        } else {
+                            EffaceCarre(j, k+1);
+                        }
+                        pthread_mutex_unlock(&mutexTab);
+                    }
+                }
+            } else {
+                // Mouvement vers la gauche
+                for(j = 8; j < colonnesCompletes[i]; ++j) {
+                    for(k = 0; k < 10; ++k) {
+                        pthread_mutex_lock(&mutexTab);
+                        tab[j+1][k] = tab[j][k];
+                        if(tab[j][k]) {
+                            DessineSprite(j+1, k, BRIQUE);
+                        } else {
+                            EffaceCarre(j+1, k);
+                        }
+                        pthread_mutex_unlock(&mutexTab);
+                    }
+                }
+            }
         }
+
+        // Ajout du score
+        pthread_mutex_lock(&mutexScore);
+        score += 5 * (nbColonnesCompletes + nbLignesCompletes);
+        pthread_cond_signal(&condScore);
+        pthread_mutex_unlock(&mutexScore);
+
+        // Reset du nombre d'analyse
+        pthread_mutex_lock(&mutexAnalyse);
+        nbAnalyses = 0;
+        pthread_mutex_unlock(&mutexAnalyse);
     }
 }
 
@@ -572,7 +649,7 @@ void suppressionCase(void *p) {
 }
 
 void handlerSIGUSR1(int sig) {
-    printf("(HANDLER SIGUSR1) start\n");
+    // printf("(HANDLER SIGUSR1) start\n");
     CASE *tmpCase = (CASE*) pthread_getspecific(keyCase);
     if(!tmpCase) {
         fprintf(stderr, "pthread_getspecific fail...\n");
@@ -581,7 +658,6 @@ void handlerSIGUSR1(int sig) {
     int i;
 
     // Check si la colonne est complète
-    displayTab();
     for (i = 0; i < 14; ++i) {
         pthread_mutex_lock(&mutexTab);
         if (tab[i][tmpCase->colonne] == 0) {
