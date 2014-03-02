@@ -512,7 +512,7 @@ void setPiece(CASE cases[], int type, int nbCases) {
         if (type == VIDE) {
             EffaceCarre(cases[i].ligne, cases[i].colonne);
             pthread_mutex_lock(&mutexTab);
-            tab[cases[i].colonne][cases[i].ligne] = 0;
+            tab[cases[i].ligne][cases[i].colonne] = 0;
             pthread_mutex_unlock(&mutexTab);
         } else {
             DessineSprite(cases[i].ligne, cases[i].colonne, type);
@@ -548,13 +548,13 @@ void handlerSIGUSR1(int sig) {
     if (i == 14) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
-        while(i < 4) {
+        while(i < nbColonnesCompletes) {
             if (colonnesCompletes[i] == tmpCase->colonne) {
                 break;
             }
             ++i;
         }
-        if (i == 4) {
+        if (i == nbColonnesCompletes) {
             printf("(HANDLER SIGUSR1) colonne %d complete\n", tmpCase->colonne);
             colonnesCompletes[nbColonnesCompletes] = tmpCase->colonne;
             ++nbColonnesCompletes;
@@ -580,13 +580,13 @@ void handlerSIGUSR1(int sig) {
     if (i == 10) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
-        while(i < 4) {
+        while(i < nbLignesCompletes) {
             if (lignesCompletes[i] == tmpCase->ligne) {
                 break;
             }
             ++i;
         }
-        if (i == 4) {
+        if (i == nbLignesCompletes) {
             printf("(HANDLER SIGUSR1) ligne %d complete\n", tmpCase->ligne);
             lignesCompletes[nbLignesCompletes] = tmpCase->ligne;
             ++nbLignesCompletes;
@@ -609,7 +609,7 @@ void handlerSIGUSR1(int sig) {
 void displayTab() {
     printf("===============================\n");
     for (int i = 0; i < NB_LIGNES; ++i) {
-        for (int j = 0; j < NB_COLONNES; ++j) {
+        for (int j = 0; j < 10; ++j) {
             pthread_mutex_lock(&mutexTab);
             printf("%d | ", tab[i][j]);
             pthread_mutex_unlock(&mutexTab);
