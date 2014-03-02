@@ -70,7 +70,7 @@ int   nbColonnesCompletes;
 int   nbAnalyses;
 
 // Thread Handle
-pthread_t tabThreadCaseHandle[14][10];
+pthread_t threadCaseHandle[14][10];
 
 // Key Specific
 pthread_key_t keyCase;
@@ -80,7 +80,7 @@ pthread_mutex_t mutexTab;
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 pthread_mutex_t mutexPiecesEnCours;
 pthread_mutex_t mutexScore;
-pthread_mutex_t mutexMaCase;
+pthread_mutex_t mutexParamThreadCase;
 pthread_mutex_t mutexAnalyse;
 
 // Cond's
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&mutexMessage, NULL);
     pthread_mutex_init(&mutexPiecesEnCours, NULL);
     pthread_mutex_init(&mutexScore, NULL);
-    pthread_mutex_init(&mutexMaCase, NULL);
+    pthread_mutex_init(&mutexParamThreadCase, NULL);
     pthread_mutex_init(&mutexAnalyse, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
@@ -157,11 +157,11 @@ int main(int argc, char* argv[]) {
 
     for (i = 0; i < 14; ++i) {
         for (j = 0; j < 10; ++j) {
-            pthread_mutex_lock(&mutexMaCase);
+            pthread_mutex_lock(&mutexParamThreadCase);
             tmpCase.ligne = i;
             tmpCase.colonne = j;
 
-            if((errno = pthread_create(&tabThreadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
+            if((errno = pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
                 fprintf(stderr, "Erreur de lancement du threadDefileMessage[%d][%d]", i, j);
             }
         }
@@ -293,7 +293,7 @@ void* threadPiece(void*) {
             majScore = 1;
             i = 0;
             while(i < 4) {
-                pthread_kill(tabThreadCaseHandle[casesInserees[i].ligne][casesInserees[i].colonne], SIGUSR1);
+                pthread_kill(threadCaseHandle[casesInserees[i].ligne][casesInserees[i].colonne], SIGUSR1);
                 ++i;
             }
             pthread_cond_signal(&condScore);
@@ -383,7 +383,7 @@ void *threadCase(void *p) {
     CASE* tmpCase = (CASE*) malloc(sizeof(CASE));
     pthread_setspecific(keyCase, &tmpCase);
     *tmpCase = *(CASE*)p;
-    pthread_mutex_unlock(&mutexMaCase);
+    pthread_mutex_unlock(&mutexParamThreadCase);
 
     printf("(THREAD CASE) Lancement du thread case %d, %d\n", tmpCase->ligne, tmpCase->colonne);
     for(;;) {
@@ -508,30 +508,30 @@ void suppressionCase(void *p) {
 
 void handlerSIGUSR1(int sig) {
     printf("(HANDLER SIGUSR1) start\n");
-    CASE *maCase = (CASE*) pthread_getspecific(keyCase);
+    CASE *tmpCase = (CASE*) pthread_getspecific(keyCase);
     int i;
 
     for (i = 0; i < 14; ++i) {
         pthread_mutex_lock(&mutexTab);
-        if (tab[i][maCase->colonne] == 0) {
+        if (tab[i][tmpCase->colonne] == 0) {
             break;
         }
 
         pthread_mutex_unlock(&mutexTab);
     }
-    if (i == 13 && tab[13][maCase->colonne] == 0) {
+    if (i == 13 && tab[13][tmpCase->colonne] == 0) {
         pthread_mutex_lock(&mutexAnalyse);
 
         i = 0;
         while(i < 4) {
-            if (colonnesCompletes[i] == maCase->colonne) {
+            if (colonnesCompletes[i] == tmpCase->colonne) {
                 break;
             }
             ++i;
         }
         if (i == 4) {
             printf("(HANDLER SIGUSR1) colonne filled\n");
-            colonnesCompletes[nbColonnesCompletes] = maCase->colonne;
+            colonnesCompletes[nbColonnesCompletes] = tmpCase->colonne;
             ++nbColonnesCompletes;
         }
         pthread_mutex_unlock(&mutexAnalyse);
@@ -539,23 +539,23 @@ void handlerSIGUSR1(int sig) {
 
     for (i = 0; i < 10; ++i) {
         pthread_mutex_lock(&mutexTab);
-        if (tab[maCase->ligne][i] == 0) {
+        if (tab[tmpCase->ligne][i] == 0) {
             break;
         }
         pthread_mutex_unlock(&mutexTab);
     }
-    if (i == 13 && tab[maCase->ligne][i] == 0) {
+    if (i == 13 && tab[tmpCase->ligne][i] == 0) {
         pthread_mutex_lock(&mutexAnalyse);
 
         i = 0;
         while(i < 4) {
-            if (lignesCompletes[i] == maCase->ligne) {
+            if (lignesCompletes[i] == tmpCase->ligne) {
                 break;
             }
             ++i;
         }
         if (i == 4) {
-            lignesCompletes[nbLignesCompletes] = maCase->ligne;
+            lignesCompletes[nbLignesCompletes] = tmpCase->ligne;
             ++nbLignesCompletes;
         }
         pthread_mutex_unlock(&mutexAnalyse);
