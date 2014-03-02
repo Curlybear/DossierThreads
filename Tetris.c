@@ -423,7 +423,8 @@ void *threadCase(void *p) {
 }
 
 /**
- * Applique la gravité si le threadCase à trouvé des lignes entières
+ * Applique la gravité si le threadCase à trouvé des lignes/colonnes
+ * complètes à supprimer
  */
 void *threadGravite(void *p) {
     int i, j, k;
