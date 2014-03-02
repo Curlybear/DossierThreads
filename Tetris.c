@@ -86,6 +86,7 @@ pthread_mutex_t mutexAnalyse;
 // Cond's
 pthread_cond_t condNbPiecesEnCours;
 pthread_cond_t condScore;
+pthread_cond_t condAnalyse;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void  setMessage(const char*);
@@ -96,7 +97,7 @@ int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
 
-void suppressionCase(void*);
+void  suppressionCase(void*);
 
 // THREADS
 void *threadDefileMessage(void*);
@@ -104,6 +105,7 @@ void *threadPiece(void*);
 void *threadEvent(void*);
 void *threadScore(void*);
 void *threadCase(void*);
+void *threadGravite(void*);
 
 // Sig Handlers
 void handlerSIGUSR1(int sig);
@@ -124,6 +126,7 @@ int main(int argc, char* argv[]) {
     pthread_t pieceHandle;
     pthread_t eventHandle;
     pthread_t scoreHandle;
+    pthread_t graviteHandle;
 
     srand((unsigned)time(NULL));
 
@@ -136,6 +139,7 @@ int main(int argc, char* argv[]) {
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
     pthread_cond_init(&condScore, NULL);
+    pthread_cond_init(&condAnalyse, NULL);
 
     // Ouverture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Ouverture de la grille de jeu\n");
@@ -187,6 +191,9 @@ int main(int argc, char* argv[]) {
     }
     if((errno = pthread_create(&scoreHandle, NULL, threadScore, NULL)) != 0) {
        perror("Erreur de lancement du threadScore");
+    }
+    if((errno = pthread_create(&graviteHandle, NULL, threadGravite, NULL)) != 0) {
+       perror("Erreur de lancement du threadGravite");
     }
     if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
         perror("Erreur de lancement du threadEvent");
@@ -307,6 +314,7 @@ void* threadPiece(void*) {
             pthread_mutex_lock(&mutexAnalyse);
             nbColonnesCompletes = 0;
             nbLignesCompletes = 0;
+            nbAnalyses = 0;
             pthread_mutex_unlock(&mutexAnalyse);
             i = 0;
             while(i < nbCasesInserees) {
@@ -359,18 +367,15 @@ void* threadEvent(void*) {
             case CLIC_DROIT:
                 printf("(THREAD EVENT) Clic droit\n");
                 pthread_mutex_lock(&mutexPiecesEnCours);
-                if(nbCasesInserees == 0) {
-                    pthread_mutex_unlock(&mutexPiecesEnCours);
-                    break;
+                if(nbCasesInserees != 0) {
+                    --nbCasesInserees;
+                    pthread_mutex_lock(&mutexTab);
+                    tab[casesInserees[nbCasesInserees].ligne][casesInserees[nbCasesInserees].colonne] = 0;
+                    pthread_mutex_unlock(&mutexTab);
+                    EffaceCarre(casesInserees[nbCasesInserees].ligne, casesInserees[nbCasesInserees].colonne);
+                    pthread_cond_signal(&condNbPiecesEnCours);
                 }
-                --nbCasesInserees;
-                pthread_mutex_lock(&mutexTab);
-                tab[casesInserees[nbCasesInserees].ligne][casesInserees[nbCasesInserees].colonne] = 0;
-                pthread_mutex_unlock(&mutexTab);
-                EffaceCarre(casesInserees[nbCasesInserees].ligne, casesInserees[nbCasesInserees].colonne);
                 pthread_mutex_unlock(&mutexPiecesEnCours);
-                pthread_cond_signal(&condNbPiecesEnCours);
-
                 break;
         }
     }
@@ -393,6 +398,13 @@ void *threadScore(void *a) {
     pthread_mutex_unlock(&mutexScore);
 }
 
+/**
+ * Ce thread est crée autant de fois qu'il y a de case,
+ * Il est réveillé à la réception du SIGUSR1, càd, si
+ * une pièce a correctement été posée sur la case correspondante...
+ *
+ * @param CASE *p Les coordonées de la case correspondant au thread
+ */
 void *threadCase(void *p) {
     CASE *tmpCase = (CASE*) malloc(sizeof(CASE));
     if(!tmpCase) {
@@ -406,6 +418,41 @@ void *threadCase(void *p) {
 
     for(;;) {
         pause();
+    }
+}
+
+/**
+ * Applique la gravité si le threadCase à trouvé des lignes entières
+ */
+void *threadGravite(void *p) {
+    int i;
+    struct timespec t;
+    t.tv_sec = 2;
+    t.tv_nsec = 0;
+
+    for (;;) {
+        // Attente de l'analyse
+        pthread_mutex_lock(&mutexAnalyse);
+        while(nbAnalyses < pieceEnCours.nbCases) {
+            pthread_cond_wait(&condAnalyse, &mutexAnalyse);
+        }
+        pthread_mutex_unlock(&mutexAnalyse);
+
+        // On passe son tour si pas de ligne / colonne complète
+        if(nbColonnesCompletes <= 0 && nbLignesCompletes <= 0) {
+            continue;
+        }
+
+        // Attente de 2 secondes
+        nanosleep(&t, NULL);
+
+        // Début de la gravité des lignes
+        for(i = 0; i < nbLignesCompletes; ++i) {
+        }
+
+        // Début de la gravité des colonnes
+        for(i = 0; i < nbColonnesCompletes; ++i) {
+        }
     }
 }
 
@@ -538,7 +585,6 @@ void handlerSIGUSR1(int sig) {
     for (i = 0; i < 14; ++i) {
         pthread_mutex_lock(&mutexTab);
         if (tab[i][tmpCase->colonne] == 0) {
-            printf("[DEBUG ====] stuff colonne %d, %d : %d\n", i, tmpCase->colonne, tab[i][tmpCase->colonne]);
             pthread_mutex_unlock(&mutexTab);
             break;
         }
@@ -570,7 +616,6 @@ void handlerSIGUSR1(int sig) {
     for (i = 0; i < 10; ++i) {
         pthread_mutex_lock(&mutexTab);
         if (tab[tmpCase->ligne][i] == 0) {
-            printf("stuff ligne %d, %d\n", tmpCase->ligne, i);
             pthread_mutex_unlock(&mutexTab);
             break;
         }
@@ -596,16 +641,14 @@ void handlerSIGUSR1(int sig) {
         }
         pthread_mutex_unlock(&mutexAnalyse);
     }
+    pthread_mutex_lock(&mutexAnalyse);
+    ++nbAnalyses;
+    pthread_cond_signal(&condAnalyse);
+    pthread_mutex_unlock(&mutexAnalyse);
 }
 
-
-
-
-
-
-
+///////////////////////////////////////////////////////////////////
 // DEBUG FUNCTIONS
-
 void displayTab() {
     printf("===============================\n");
     for (int i = 0; i < NB_LIGNES; ++i) {
