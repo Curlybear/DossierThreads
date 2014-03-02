@@ -551,6 +551,11 @@ void handlerSIGUSR1(int sig) {
             printf("(HANDLER SIGUSR1) colonne %d complete\n", tmpCase->colonne);
             colonnesCompletes[nbColonnesCompletes] = tmpCase->colonne;
             ++nbColonnesCompletes;
+
+            for (i = 0; i < 14; ++i)
+            {
+                DessineSprite(i,tmpCase->colonne,FUSION);
+            }
         }
         pthread_mutex_unlock(&mutexAnalyse);
     }
@@ -575,8 +580,13 @@ void handlerSIGUSR1(int sig) {
             ++i;
         }
         if (i == 4) {
+            printf("(HANDLER SIGUSR1) ligne %d complete\n", tmpCase->ligne);
             lignesCompletes[nbLignesCompletes] = tmpCase->ligne;
             ++nbLignesCompletes;
+            for (i = 0; i < 10; ++i)
+            {
+                DessineSprite(tmpCase->ligne,i,FUSION);
+            }
         }
         pthread_mutex_unlock(&mutexAnalyse);
     }
