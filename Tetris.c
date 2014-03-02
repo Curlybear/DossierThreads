@@ -155,17 +155,19 @@ int main(int argc, char* argv[]) {
     sigAct.sa_flags = 0;
     sigaction(SIGUSR1, &sigAct, NULL);
 
+    pthread_mutex_lock(&mutexParamThreadCase);
     for (i = 0; i < 14; ++i) {
         for (j = 0; j < 10; ++j) {
-            pthread_mutex_lock(&mutexParamThreadCase);
             tmpCase.ligne = i;
             tmpCase.colonne = j;
 
             if((errno = pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
                 fprintf(stderr, "Erreur de lancement du threadDefileMessage[%d][%d]", i, j);
             }
+            pthread_mutex_lock(&mutexParamThreadCase);
         }
     }
+    pthread_mutex_unlock(&mutexParamThreadCase);
 
     // Masquage du signal pour les autres threads
     sigaddset(&mask, SIGUSR1);
@@ -389,9 +391,9 @@ void *threadCase(void *p) {
     CASE *tmpCase = (CASE*) malloc(sizeof(CASE));
     pthread_setspecific(keyCase, tmpCase);
     *tmpCase = *(CASE*) p;
+    printf("(THREAD CASE) Lancement du thread case %d, %d\n", tmpCase->ligne, tmpCase->colonne);
     pthread_mutex_unlock(&mutexParamThreadCase);
 
-    printf("(THREAD CASE) Lancement du thread case %d, %d\n", tmpCase->ligne, tmpCase->colonne);
     for(;;) {
         pause();
     }
