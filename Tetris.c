@@ -291,13 +291,19 @@ void* threadPiece(void*) {
             pthread_mutex_lock(&mutexScore);
             ++score;
             majScore = 1;
+            pthread_cond_signal(&condScore);
+            pthread_mutex_unlock(&mutexScore);
+
+            // Analyse des lignes et des colonnes
+            pthread_mutex_lock(&mutexAnalyse);
+            nbColonnesCompletes = 0;
+            nbLignesCompletes = 0;
+            pthread_mutex_unlock(&mutexAnalyse);
             i = 0;
             while(i < 4) {
                 pthread_kill(threadCaseHandle[casesInserees[i].ligne][casesInserees[i].colonne], SIGUSR1);
                 ++i;
             }
-            pthread_cond_signal(&condScore);
-            pthread_mutex_unlock(&mutexScore);
 
             printf("(THREAD PIECE) Yipee!\n");
         } else {
@@ -511,17 +517,18 @@ void handlerSIGUSR1(int sig) {
     CASE *tmpCase = (CASE*) pthread_getspecific(keyCase);
     int i;
 
+    // Check si la colonne est complète
     for (i = 0; i < 14; ++i) {
         pthread_mutex_lock(&mutexTab);
         if (tab[i][tmpCase->colonne] == 0) {
+            pthread_mutex_unlock(&mutexTab);
             break;
         }
-
         pthread_mutex_unlock(&mutexTab);
     }
-    if (i == 13 && tab[13][tmpCase->colonne] == 0) {
-        pthread_mutex_lock(&mutexAnalyse);
 
+    if (i == 14/* && tab[13][tmpCase->colonne] == 0*/) {
+        pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < 4) {
             if (colonnesCompletes[i] == tmpCase->colonne) {
@@ -530,23 +537,25 @@ void handlerSIGUSR1(int sig) {
             ++i;
         }
         if (i == 4) {
-            printf("(HANDLER SIGUSR1) colonne filled\n");
+            printf("(HANDLER SIGUSR1) colonne %d complete\n", tmpCase->colonne);
             colonnesCompletes[nbColonnesCompletes] = tmpCase->colonne;
             ++nbColonnesCompletes;
         }
         pthread_mutex_unlock(&mutexAnalyse);
     }
 
+    // Check si la ligne est complète
     for (i = 0; i < 10; ++i) {
         pthread_mutex_lock(&mutexTab);
         if (tab[tmpCase->ligne][i] == 0) {
+            pthread_mutex_unlock(&mutexTab);
             break;
         }
         pthread_mutex_unlock(&mutexTab);
     }
-    if (i == 13 && tab[tmpCase->ligne][i] == 0) {
-        pthread_mutex_lock(&mutexAnalyse);
 
+    if (i == 10/* && tab[tmpCase->ligne][i] == 0*/) {
+        pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < 4) {
             if (lignesCompletes[i] == tmpCase->ligne) {
