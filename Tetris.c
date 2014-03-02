@@ -188,7 +188,6 @@ void* threadPiece(void*) {
             for(i = 0; i < random(0, 4); ++i) {
                 rotationPiece(&pieceEnCours);
             }
-            // TODO Clean le carré wesh
             for (i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 4,
                     pieceEnCours.cases[i].colonne + 16, pieceEnCours.professeur);
