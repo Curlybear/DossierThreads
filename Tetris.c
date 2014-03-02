@@ -115,6 +115,8 @@ int main(int argc, char* argv[]) {
     char ok = 0;
     CASE tmpCase;
 
+    pthread_key_create(&keyCase, suppressionCase);
+
     pthread_t defileMessageHandle;
     pthread_t pieceHandle;
     pthread_t eventHandle;
@@ -387,11 +389,14 @@ void *threadScore(void *a) {
 }
 
 void *threadCase(void *p) {
-    pthread_key_create(&keyCase, suppressionCase);
     CASE *tmpCase = (CASE*) malloc(sizeof(CASE));
-    pthread_setspecific(keyCase, tmpCase);
+    if(!tmpCase) {
+        fprintf(stderr, "(THREAD CASE) malloc fail...\n");
+    }
+    if(pthread_setspecific(keyCase, tmpCase)) {
+        fprintf(stderr, "(THREAD CASE) pthread_setspecific fail...\n");
+    }
     *tmpCase = *(CASE*) p;
-    printf("(THREAD CASE) Lancement du thread case %d, %d\n", tmpCase->ligne, tmpCase->colonne);
     pthread_mutex_unlock(&mutexParamThreadCase);
 
     for(;;) {
@@ -517,6 +522,10 @@ void suppressionCase(void *p) {
 void handlerSIGUSR1(int sig) {
     printf("(HANDLER SIGUSR1) start\n");
     CASE *tmpCase = (CASE*) pthread_getspecific(keyCase);
+    if(!tmpCase) {
+        fprintf(stderr, "pthread_getspecific fail...\n");
+        exit(1);
+    }
     int i;
 
     // Check si la colonne est complète
@@ -529,7 +538,7 @@ void handlerSIGUSR1(int sig) {
         pthread_mutex_unlock(&mutexTab);
     }
 
-    if (i == 14/* && tab[13][tmpCase->colonne] == 0*/) {
+    if (i == 14) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < 4) {
@@ -556,7 +565,7 @@ void handlerSIGUSR1(int sig) {
         pthread_mutex_unlock(&mutexTab);
     }
 
-    if (i == 10/* && tab[tmpCase->ligne][i] == 0*/) {
+    if (i == 10) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < 4) {
