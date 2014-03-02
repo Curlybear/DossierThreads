@@ -380,9 +380,9 @@ void *threadScore(void *a) {
 
 void *threadCase(void *p) {
     pthread_key_create(&keyCase, suppressionCase);
-    CASE* tmpCase = (CASE*) malloc(sizeof(CASE));
-    pthread_setspecific(keyCase, &tmpCase);
-    *tmpCase = *(CASE*)p;
+    CASE *tmpCase = (CASE*) malloc(sizeof(CASE));
+    pthread_setspecific(keyCase, tmpCase);
+    *tmpCase = *(CASE*) p;
     pthread_mutex_unlock(&mutexParamThreadCase);
 
     printf("(THREAD CASE) Lancement du thread case %d, %d\n", tmpCase->ligne, tmpCase->colonne);
