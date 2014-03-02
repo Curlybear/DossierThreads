@@ -63,10 +63,22 @@ CASE  casesInserees[NB_CASES]; // cases insérées par le joueur
 int   nbCasesInserees = 0;     // nombre de cases actuellement insérées par le joueur.
 char  majScore = 0;
 int   score = 0;
+int lignesCompletes[4];
+int nbLignesCompletes;
+int colonnesCompletes[4];
+int nbColonnesCompletes;
+int nbAnalyses;
 
+pthread_t tabThreadCaseHandle[14][10];
+
+pthread_key_t keyCase;
+
+pthread_mutex_t mutexTab;
 pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCourant
 pthread_mutex_t mutexPiecesEnCours;
 pthread_mutex_t mutexScore;
+pthread_mutex_t mutexMaCase;
+pthread_mutex_t mutexAnalyse;
 
 pthread_cond_t condNbPiecesEnCours;
 pthread_cond_t condScore;
@@ -80,16 +92,27 @@ int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
 
+void suppressionCase(void*);
+
 // THREADS
 void *threadDefileMessage(void*);
 void *threadPiece(void*);
 void *threadEvent(void*);
 void *threadScore(void*);
+void *threadCase(void*);
+
+// HANDLERS SIGS
+
+void handlerSIGUSR1(int sig);
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[]) {
+    int i,j;
     char buffer[80];
     char ok = 0;
+    CASE maCase;
+
     pthread_t defileMessageHandle;
     pthread_t pieceHandle;
     pthread_t eventHandle;
@@ -97,12 +120,19 @@ int main(int argc, char* argv[]) {
 
     srand((unsigned)time(NULL));
 
+    pthread_mutex_init(&mutexTab, NULL);
     pthread_mutex_init(&mutexMessage, NULL);
     pthread_mutex_init(&mutexPiecesEnCours, NULL);
     pthread_mutex_init(&mutexScore, NULL);
+    pthread_mutex_init(&mutexMaCase, NULL);
+    pthread_mutex_init(&mutexAnalyse, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
     pthread_cond_init(&condScore, NULL);
+
+    struct sigaction sigAct;
+    sigset_t mask;
+
 
     // Ouverture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Ouverture de la grille de jeu\n");
@@ -117,6 +147,30 @@ int main(int argc, char* argv[]) {
     // Chargement des sprites et de l'image de fond
     ChargementImages();
     DessineSprite(12, 11, VOYANT_VERT);
+
+    sigemptyset(&sigAct.sa_mask);
+    sigemptyset(&mask);
+    sigAct.sa_handler=handlerSIGUSR1;
+    sigAct.sa_flags = 0;
+    sigaction(SIGUSR1, &sigAct, NULL);
+
+    for (int i = 0; i < 14; ++i)
+    {
+        for (int j = 0; j < 10; ++j)
+        {
+            pthread_mutex_lock(&mutexMaCase);
+
+            maCase.ligne=i;
+            maCase.colonne=j;
+
+            if((errno = pthread_create(&tabThreadCaseHandle[i][j], NULL, threadCase, &maCase)) != 0) {
+                perror("Erreur de lancement du threadDefileMessage");
+            }
+        }
+    }
+
+    sigaddset(&mask,SIGUSR1);
+    pthread_sigmask(SIG_BLOCK,&mask,NULL);
 
     if((errno = pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL)) != 0) {
         perror("Erreur de lancement du threadDefileMessage");
@@ -238,6 +292,10 @@ void* threadPiece(void*) {
             pthread_mutex_lock(&mutexScore);
             ++score;
             majScore = 1;
+            i=0;
+            while(i<4){
+                pthread_kill(tabThreadCaseHandle[casesInserees[i].ligne][casesInserees[i].colonne],SIGUSR1);
+            }
             pthread_cond_signal(&condScore);
             pthread_mutex_unlock(&mutexScore);
 
@@ -267,6 +325,7 @@ void* threadEvent(void*){
                 return NULL;
 
             case CLIC_GAUCHE:
+                pthread_mutex_lock(&mutexTab);
                 if(event.colonne < 10 && tab[event.colonne][event.ligne] == 0) {
                     printf("(THREAD EVENT) Clic gauche\n");
                     pthread_mutex_lock(&mutexPiecesEnCours);
@@ -279,6 +338,7 @@ void* threadEvent(void*){
                     pthread_mutex_unlock(&mutexPiecesEnCours);
                     pthread_cond_signal(&condNbPiecesEnCours);
                 }
+                pthread_mutex_unlock(&mutexTab);
                 break;
 
             case CLIC_DROIT:
@@ -289,8 +349,9 @@ void* threadEvent(void*){
                     break;
                 }
                 --nbCasesInserees;
+                pthread_mutex_lock(&mutexTab);
                 tab[casesInserees[nbCasesInserees].colonne][casesInserees[nbCasesInserees].ligne] = 0;
-
+                pthread_mutex_unlock(&mutexTab);
                 EffaceCarre(casesInserees[nbCasesInserees].ligne, casesInserees[nbCasesInserees].colonne);
                 pthread_mutex_unlock(&mutexPiecesEnCours);
                 pthread_cond_signal(&condNbPiecesEnCours);
@@ -316,6 +377,23 @@ void *threadScore(void *a) {
     }
     pthread_mutex_unlock(&mutexScore);
 }
+
+void *threadCase(void*p){
+
+    pthread_key_create(&keyCase,suppressionCase);
+    CASE* maCase = (CASE*)malloc(sizeof(CASE));
+    pthread_setspecific(keyCase,&maCase);
+    *maCase = *(CASE*)p;
+    pthread_mutex_unlock(&mutexMaCase);
+
+    printf("(THREAD CASE) Lancement du thread case L:%d C:%d\n",maCase->ligne,maCase->colonne);
+
+    for (;;)
+    {
+        pause();
+    }
+}
+
 
 /**
  * Retourne la partie du message défilant
@@ -418,9 +496,73 @@ void setPiece(CASE cases[], int type, int nbCases) {
     for(int i = 0; i < nbCases; ++i) {
         if (type == VIDE) {
             EffaceCarre(cases[i].ligne, cases[i].colonne);
+            pthread_mutex_lock(&mutexTab);
             tab[cases[i].colonne][cases[i].ligne] = 0;
+            pthread_mutex_unlock(&mutexTab);
         } else {
             DessineSprite(cases[i].ligne, cases[i].colonne, type);
         }
+    }
+}
+
+void suppressionCase(void*){
+    free (pthread_getspecific(keyCase));
+}
+
+void handlerSIGUSR1(int sig){
+    CASE* maCase=(CASE*)pthread_getspecific(keyCase);
+    int i;
+    printf("(HANDLER SIGUSR1) START\n");
+
+
+    for (i = 0; i < 14; ++i){
+        pthread_mutex_lock(&mutexTab);
+        if (tab[i][maCase->colonne]==0){
+            break;
+        }
+
+        pthread_mutex_unlock(&mutexTab);
+    }
+    if (i==13 && tab[13][maCase->colonne]==0){
+        pthread_mutex_lock(&mutexAnalyse);
+
+        i=0;
+        while(i<4){
+            if (colonnesCompletes[i]==maCase->colonne){
+                break;
+            }
+            ++i;
+        }
+        if (i==4){
+            printf("(HANDLER SIGUSR1) COLONNE FILLED\n");
+            colonnesCompletes[nbColonnesCompletes]=maCase->colonne;
+            ++nbColonnesCompletes;
+        }
+        pthread_mutex_unlock(&mutexAnalyse);
+    }
+
+    for (i = 0; i < 10; ++i){
+        pthread_mutex_lock(&mutexTab);
+        if (tab[maCase->ligne][i]==0){
+            break;
+        }
+        pthread_mutex_unlock(&mutexTab);
+    }
+    if (i==13 && tab[maCase->ligne][i]==0)
+    {
+        pthread_mutex_lock(&mutexAnalyse);
+
+        i=0;
+        while(i<4){
+            if (lignesCompletes[i]==maCase->ligne){
+                break;
+            }
+            ++i;
+        }
+        if (i==4){
+            lignesCompletes[nbLignesCompletes]=maCase->ligne;
+            ++nbLignesCompletes;
+        }
+        pthread_mutex_unlock(&mutexAnalyse);
     }
 }
