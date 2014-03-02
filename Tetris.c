@@ -194,14 +194,14 @@ void* threadPiece(void*) {
         pthread_mutex_lock(&mutexPiecesEnCours);
         if(shouldNewPiece) {
             for (i = 0; i < pieceEnCours.nbCases; ++i) {
-                EffaceCarre(pieceEnCours.cases[i].ligne + 4, pieceEnCours.cases[i].colonne + 15);
+                EffaceCarre(pieceEnCours.cases[i].ligne + 3, pieceEnCours.cases[i].colonne + 15);
             }
             pieceEnCours = pieces[random(0, 7)];
             for(i = 0; i < random(0, 4); ++i) {
                 rotationPiece(&pieceEnCours);
             }
             for (i = 0; i < pieceEnCours.nbCases; ++i) {
-                DessineSprite(pieceEnCours.cases[i].ligne + 4,
+                DessineSprite(pieceEnCours.cases[i].ligne + 3,
                     pieceEnCours.cases[i].colonne + 15, pieceEnCours.professeur);
             }
         }
