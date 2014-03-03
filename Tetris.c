@@ -107,9 +107,11 @@ void *threadEvent(void*);
 void *threadScore(void*);
 void *threadCase(void*);
 void *threadGravite(void*);
+void *threadFinPartie(void*);
 
 // Sig Handlers
 void handlerSIGUSR1(int sig);
+void handlerSIGUSR2(int sig);
 
 // DEBUG
 void displayTab();
@@ -128,6 +130,7 @@ int main(int argc, char* argv[]) {
     pthread_t eventHandle;
     pthread_t scoreHandle;
     pthread_t graviteHandle;
+    pthread_t finPartieHandle;
 
     srand((unsigned)time(NULL));
 
@@ -172,15 +175,25 @@ int main(int argc, char* argv[]) {
             tmpCase.colonne = j;
 
             if((errno = pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
-                fprintf(stderr, "Erreur de lancement du threadDefileMessage[%d][%d]", i, j);
+                fprintf(stderr, "Erreur de lancement du threadCase[%d][%d]", i, j);
             }
             pthread_mutex_lock(&mutexParamThreadCase);
         }
     }
     pthread_mutex_unlock(&mutexParamThreadCase);
 
-    // Masquage du signal pour les autres threads
     sigaddset(&mask, SIGUSR1);
+
+    sigAct.sa_handler=handlerSIGUSR2;
+    sigAct.sa_flags = 0;
+    sigaction(SIGUSR2, &sigAct, NULL);
+
+    if((errno = pthread_create(&finPartieHandle, NULL, threadFinPartie, NULL)) != 0) {
+        fprintf(stderr, "Erreur de lancement du threadFinPartie");
+    }
+
+    // Masquage du signal pour les autres threads
+    sigaddset(&mask, SIGUSR2);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
     if((errno = pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL)) != 0) {
@@ -570,6 +583,12 @@ void *threadGravite(void *p) {
     }
 }
 
+void *threadFinPartie(void *) {
+    for(;;) {
+        pause();
+    }
+}
+
 
 /**
  * Retourne la partie du message défilant
@@ -759,6 +778,11 @@ void handlerSIGUSR1(int sig) {
     pthread_cond_signal(&condAnalyse);
     pthread_mutex_unlock(&mutexAnalyse);
 }
+
+void handlerSIGUSR2(int sig){
+
+}
+
 
 /**
  * Trie un vecteur par ordre croissant si en dessous du centre
