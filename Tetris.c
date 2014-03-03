@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
     printf("(THREAD MAIN) Ouverture de la grille de jeu\n");
     fflush(stdout);
     sprintf(buffer, "!!! TETRIS ZERO GRAVITY !!!");
-    if (OuvrirGrilleSDL(NB_LIGNES, NB_COLONNES, 40, buffer) < 0) {
+    if(OuvrirGrilleSDL(NB_LIGNES, NB_COLONNES, 40, buffer) < 0) {
         printf("Erreur de OuvrirGrilleSDL\n");
         fflush(stdout);
         exit(1);
@@ -172,8 +172,8 @@ int main(int argc, char* argv[]) {
     sigaction(SIGUSR1, &sigAct, NULL);
 
     pthread_mutex_lock(&mutexParamThreadCase);
-    for (i = 0; i < 14; ++i) {
-        for (j = 0; j < 10; ++j) {
+    for(i = 0; i < 14; ++i) {
+        for(j = 0; j < 10; ++j) {
             tmpCase.ligne = i;
             tmpCase.colonne = j;
 
@@ -277,7 +277,7 @@ void* threadPiece(void*) {
     for(;;) {
         pthread_mutex_lock(&mutexPiecesEnCours);
         if(shouldNewPiece) {
-            for (i = 0; i < pieceEnCours.nbCases; ++i) {
+            for(i = 0; i < pieceEnCours.nbCases; ++i) {
                 EffaceCarre(pieceEnCours.cases[i].ligne + 3, pieceEnCours.cases[i].colonne + 15);
             }
             // TODO Remettre ça comme il faut!
@@ -286,7 +286,7 @@ void* threadPiece(void*) {
             // for(i = 0; i < random(0, 4); ++i) {
             //     rotationPiece(&pieceEnCours);
             // }
-            for (i = 0; i < pieceEnCours.nbCases; ++i) {
+            for(i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 3,
                     pieceEnCours.cases[i].colonne + 15, pieceEnCours.professeur);
             }
@@ -452,7 +452,7 @@ void *threadGravite(void *p) {
     t2.tv_sec = 0;
     t2.tv_nsec = 500000000;
 
-    for (;;) {
+    for(;;) {
         // Attente de l'analyse
         pthread_mutex_lock(&mutexAnalyse);
         while(nbAnalyses < pieceEnCours.nbCases) {
@@ -695,7 +695,7 @@ int comparaisonPiece(CASE p1[], CASE p2[], int nbCases) {
  */
 void setPiece(CASE cases[], int type, int nbCases) {
     for(int i = 0; i < nbCases; ++i) {
-        if (type == VIDE) {
+        if(type == VIDE) {
             EffaceCarre(cases[i].ligne, cases[i].colonne);
             pthread_mutex_lock(&mutexTab);
             tab[cases[i].ligne][cases[i].colonne] = 0;
@@ -720,30 +720,30 @@ void handlerSIGUSR1(int sig) {
     int i;
 
     // Check si la colonne est complète
-    for (i = 0; i < 14; ++i) {
+    for(i = 0; i < 14; ++i) {
         pthread_mutex_lock(&mutexTab);
-        if (tab[i][tmpCase->colonne] == 0) {
+        if(tab[i][tmpCase->colonne] == 0) {
             pthread_mutex_unlock(&mutexTab);
             break;
         }
         pthread_mutex_unlock(&mutexTab);
     }
 
-    if (i == 14) {
+    if(i == 14) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < nbColonnesCompletes) {
-            if (colonnesCompletes[i] == tmpCase->colonne) {
+            if(colonnesCompletes[i] == tmpCase->colonne) {
                 break;
             }
             ++i;
         }
-        if (i == nbColonnesCompletes) {
+        if(i == nbColonnesCompletes) {
             printf("(HANDLER SIGUSR1) colonne %d complete\n", tmpCase->colonne);
             colonnesCompletes[nbColonnesCompletes] = tmpCase->colonne;
             ++nbColonnesCompletes;
 
-            for (i = 0; i < 14; ++i) {
+            for(i = 0; i < 14; ++i) {
                 DessineSprite(i,tmpCase->colonne,FUSION);
             }
         }
@@ -751,29 +751,29 @@ void handlerSIGUSR1(int sig) {
     }
 
     // Check si la ligne est complète
-    for (i = 0; i < 10; ++i) {
+    for(i = 0; i < 10; ++i) {
         pthread_mutex_lock(&mutexTab);
-        if (tab[tmpCase->ligne][i] == 0) {
+        if(tab[tmpCase->ligne][i] == 0) {
             pthread_mutex_unlock(&mutexTab);
             break;
         }
         pthread_mutex_unlock(&mutexTab);
     }
 
-    if (i == 10) {
+    if(i == 10) {
         pthread_mutex_lock(&mutexAnalyse);
         i = 0;
         while(i < nbLignesCompletes) {
-            if (lignesCompletes[i] == tmpCase->ligne) {
+            if(lignesCompletes[i] == tmpCase->ligne) {
                 break;
             }
             ++i;
         }
-        if (i == nbLignesCompletes) {
+        if(i == nbLignesCompletes) {
             printf("(HANDLER SIGUSR1) ligne %d complete\n", tmpCase->ligne);
             lignesCompletes[nbLignesCompletes] = tmpCase->ligne;
             ++nbLignesCompletes;
-            for (i = 0; i < 10; ++i) {
+            for(i = 0; i < 10; ++i) {
                 DessineSprite(tmpCase->ligne,i,FUSION);
             }
         }
@@ -788,32 +788,25 @@ void handlerSIGUSR1(int sig) {
 void handlerSIGUSR2(int sig){
     int i,j,k;
 
-    for ( i = 0; i < NB_LIGNES; ++i) {
-
-        for ( j = 0; j < 10; ++j) {
-
+    for(i = 0; i < NB_LIGNES; ++i) {
+        for(j = 0; j < 10; ++j) {
             pthread_mutex_lock(&mutexPiecesEnCours);
             pthread_mutex_lock(&mutexTab);
 
-            for ( k = 0; k < 4; ++k) {
-
-                if (i+pieceEnCours.cases[k].ligne < NB_LIGNES && j+pieceEnCours.cases[k].colonne < 10){
-
-                    if (tab[i+pieceEnCours.cases[k].ligne][j+pieceEnCours.cases[k].colonne]==1){
+            for(k = 0; k < 4; ++k) {
+                if(i+pieceEnCours.cases[k].ligne < NB_LIGNES && j+pieceEnCours.cases[k].colonne < 10) {
+                    if(tab[i+pieceEnCours.cases[k].ligne][j+pieceEnCours.cases[k].colonne] == 1) {
                         printf("(HANDLER SIGUSR2) Case occupée");
                         break;
                     }
-                }
-                else{
+                } else {
                     printf("(HANDLER SIGUSR2) Case hors du tableau");
-
                     break;
                 }
             }
             pthread_mutex_unlock(&mutexTab);
             pthread_mutex_unlock(&mutexPiecesEnCours);
-            if (k==4)
-            {
+            if(k == 4) {
                 return;
             }
         }
@@ -853,8 +846,8 @@ void gravityVectorSorting(int vector[], int size, int center) {
 // DEBUG FUNCTIONS
 void displayTab() {
     printf("===============================\n");
-    for (int i = 0; i < NB_LIGNES; ++i) {
-        for (int j = 0; j < 10; ++j) {
+    for(int i = 0; i < NB_LIGNES; ++i) {
+        for(int j = 0; j < 10; ++j) {
             pthread_mutex_lock(&mutexTab);
             printf("%d | ", tab[i][j]);
             pthread_mutex_unlock(&mutexTab);
