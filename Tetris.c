@@ -429,9 +429,12 @@ void *threadCase(void *p) {
  */
 void *threadGravite(void *p) {
     int i, j, k;
-    struct timespec t;
-    t.tv_sec = 1; // TODO 2 dans l'énoncé, on utilise 1 pour les tests...
-    t.tv_nsec = 0;
+    struct timespec t1;
+    struct timespec t2;
+    t1.tv_sec = 1;
+    t1.tv_nsec = 500000000;
+    t2.tv_sec = 0;
+    t2.tv_nsec = 500000000;
 
     for (;;) {
         // Attente de l'analyse
@@ -447,8 +450,8 @@ void *threadGravite(void *p) {
         }
 
         printf("(THREAD GRAVITE) Starting...\n");
-        // Attente de 2 secondes
-        nanosleep(&t, NULL);
+        // Attente de 1.5 secondes + 0.5 un peu plus loin...
+        nanosleep(&t1, NULL);
 
         // TODO Trouver un truc générique histoire de pas se taper le même code 4 fois...
 
@@ -459,6 +462,7 @@ void *threadGravite(void *p) {
         // Début de la gravité des lignes
         for(i = 0; i < nbLignesCompletes; ++i) {
             printf("Suppression de la ligne %d\n", lignesCompletes[i]);
+            nanosleep(&t2, NULL);
             if(lignesCompletes[i] < 7) {
                 // Mouvement vers le bas
                 for(j = lignesCompletes[i]; j != 0; --j) {
@@ -507,6 +511,7 @@ void *threadGravite(void *p) {
         // Début de la gravité des colonnes
         for(i = 0; i < nbColonnesCompletes; ++i) {
             printf("Suppression de la colonne %d\n", colonnesCompletes[i]);
+            nanosleep(&t2, NULL);
             if(colonnesCompletes[i] < 5) {
                 // Mouvement vers le droite
                 for(j = 0; j < NB_LIGNES; ++j) {
