@@ -227,7 +227,6 @@ int main(int argc, char* argv[]) {
     pthread_join(finPartieHandle, NULL);
 
     pthread_cancel(eventHandle);
-
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
             pthread_cancel(threadCaseHandle[i][j]);
@@ -236,18 +235,17 @@ int main(int argc, char* argv[]) {
 
     for(;;) {
         event = ReadEvent();
-        if (event.type==CROIX)
-        {
+        if (event.type == CROIX) {
             break;
         }
     }
+
+    pthread_cancel(defileMessageHandle);
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
-
-    pthread_cancel(defileMessageHandle);
 
     exit(0);
 }
@@ -271,8 +269,7 @@ void* threadDefileMessage(void*) {
     int i;
     struct timespec t;
     printf("(THREAD MESSAGE) Lancement du thread message\n");
-
-    pthread_cleanup_push(freeMessage,NULL);
+    pthread_cleanup_push(freeMessage, NULL);
 
     setMessage("Bienvenue dans Tetris Zero Gravity");
     // Message de taille 8 de (11, 10) à (19, 10)
@@ -745,8 +742,6 @@ void setPiece(CASE cases[], int type, int nbCases) {
 }
 
 void suppressionCase(void *p) {
-    printf("(suppressionCase) Free du threadCase\n");
-
     free(pthread_getspecific(keyCase));
 }
 
