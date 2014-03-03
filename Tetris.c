@@ -106,6 +106,7 @@ void  setTraitementEnCours(int);
 
 void  suppressionCase(void*);
 void  freeMessage(void*);
+void  decoServeur(void*);
 
 
 // THREADS
@@ -276,6 +277,8 @@ int main(int argc, char* argv[]) {
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
+    pthread_cancel(joueursConnectesHandle);
+    printf("DEBUG\n");
 
     exit(0);
 }
@@ -662,6 +665,7 @@ void *threadFinPartie(void *) {
 
 void *threadJoueursConnectes(void *p) {
     printf("(THREAD JOUEURS CONNECTES) starting with '%d' : '%s'\n", cle, pseudo);
+    pthread_cleanup_push(decoServeur, NULL);
 
     if(ConnectionServeur(cle, pseudo) != 0) {
         fprintf(stderr, "(THREAD JOUEURS CONNECTES) Erreur de connexion au serveur\n");
@@ -671,6 +675,7 @@ void *threadJoueursConnectes(void *p) {
     for(;;) {
         pause();
     }
+    pthread_cleanup_pop(1);
 }
 
 
@@ -948,6 +953,17 @@ void setTraitementEnCours(int enCours) {
     }
 }
 
+void freeMessage(void*) {
+    printf("(FreeMessage) Free de message\n");
+    free(message);
+}
+
+void decoServeur(void*) {
+    printf("(decoServeur) deco du serveur\n");
+    DeconnectionServeur(cle);
+}
+
+
 ///////////////////////////////////////////////////////////////////
 // DEBUG FUNCTIONS
 void displayTab() {
@@ -962,9 +978,3 @@ void displayTab() {
     }
     printf("===============================\n");
 }
-
-void freeMessage(void*){
-    printf("(FreeMessage) Free de message\n");
-    free(message);
-}
-
