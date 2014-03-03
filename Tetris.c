@@ -507,16 +507,16 @@ void *threadGravite(void *p) {
         // Début de la gravité des colonnes
         for(i = 0; i < nbColonnesCompletes; ++i) {
             printf("Suppression de la colonne %d\n", colonnesCompletes[i]);
-            if(colonnesCompletes[i] < 7) {
-                // Mouvement vers la droite
-                for(j = 0; j < 14; ++j) { // TODO Parcourir du centre vers la gauche
+            if(colonnesCompletes[i] < 5) {
+                // Mouvement vers le droite
+                for(j = 0; j < NB_LIGNES; ++j) {
                     for(k = colonnesCompletes[i]; k != 0; --k) {
                         pthread_mutex_lock(&mutexTab);
-                        tab[j][k] = tab[j][k+1];
+                        tab[j][k] = tab[j][k-1];
                         if(tab[j][k]) {
-                            DessineSprite(j, k+1, BRIQUE);
+                            DessineSprite(j, k, BRIQUE);
                         } else {
-                            EffaceCarre(j, k+1);
+                            EffaceCarre(j, k);
                         }
                         pthread_mutex_unlock(&mutexTab);
                     }
@@ -530,19 +530,19 @@ void *threadGravite(void *p) {
                 }
             } else {
                 // Mouvement vers la gauche
-                for(j = 8; j < colonnesCompletes[i]; ++j) {
-                    for(k = 0; k < 10; ++k) {
+                for(j = 0; j < NB_LIGNES; ++j) {
+                    for(k = colonnesCompletes[i]; k < 10; ++k) {
                         pthread_mutex_lock(&mutexTab);
-                        tab[j+1][k] = tab[j][k];
+                        tab[j][k] = tab[j][k+1];
                         if(tab[j][k]) {
-                            DessineSprite(j+1, k, BRIQUE);
+                            DessineSprite(j, k, BRIQUE);
                         } else {
-                            EffaceCarre(j+1, k);
+                            EffaceCarre(j, k);
                         }
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
-                // Suppression de la première colonne
+                // Suppression de la dernière colonne
                 for(j = 0; j < NB_LIGNES; ++j) {
                     pthread_mutex_lock(&mutexTab);
                     tab[j][9] = 0;
