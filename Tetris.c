@@ -96,6 +96,7 @@ int   compareCase(const void*, const void*);
 int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
+void  gravityVectorSorting(CASE[], int, int);
 
 void  suppressionCase(void*);
 
@@ -265,10 +266,11 @@ void* threadPiece(void*) {
             }
             // TODO Remettre ça comme il faut!
             // pieceEnCours = pieces[random(0, 7)];
-            pieceEnCours = pieces[0]; // DEBUG!!!!!!!!
-            for(i = 0; i < random(0, 4); ++i) {
-                rotationPiece(&pieceEnCours);
-            }
+            pieceEnCours = pieces[6]; // DEBUG!!!!!!!!
+            rotationPiece(&pieceEnCours); // DEBUG!!!!!!!!
+            // for(i = 0; i < random(0, 4); ++i) {
+            //     rotationPiece(&pieceEnCours);
+            // }
             for (i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 3,
                     pieceEnCours.cases[i].colonne + 15, pieceEnCours.professeur);
@@ -449,9 +451,12 @@ void *threadGravite(void *p) {
         // Attente de 2 secondes
         nanosleep(&t, NULL);
 
-        // TODO Tri des lignes/colonnes à déplacer pour éviter les pertes en cas de déplacements multiples
         // TODO Suppression de la première/dernière ligne/colonne après chaque déplacement
         // TODO Trouver un truc générique histoire de pas se taper le même code 4 fois...
+
+        // Tri des lignes et des colonnes complètes
+        gravityVectorSorting(lignesCompletes, nbLignesCompletes, 7);
+        gravityVectorSorting(colonnesCompletes, nbColonnesCompletes, 5);
 
         // Début de la gravité des lignes
         for(i = 0; i < nbLignesCompletes; ++i) {
@@ -722,6 +727,31 @@ void handlerSIGUSR1(int sig) {
     ++nbAnalyses;
     pthread_cond_signal(&condAnalyse);
     pthread_mutex_unlock(&mutexAnalyse);
+}
+
+/**
+ * Trie un vecteur par ordre croissant si en dessous du centre
+ * et par ordre décroissant sinon (cf. énoncé p9).
+ */
+void gravityVectorSorting(CASE vector[], int size, int center) {
+    int i, j, k;
+    for(i = 0; i < size; ++i) {
+        for(j = i; j < size; ++j) {
+            if(vector[i] < center) {
+                if(vector[j] < vector[i]) {
+                    k = vector[j];
+                    vector[j] = vector[i];
+                    vector[i] = k;
+                }
+            } else {
+                if(vector[j] > vector[i]) {
+                    k = vector[j];
+                    vector[j] = vector[i];
+                    vector[i] = k;
+                }
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////
