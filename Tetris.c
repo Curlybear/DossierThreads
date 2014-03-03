@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
     FermerGrilleSDL();
     printf("OK\n");
 
-
+    pthread_cancel(defileMessageHandle);
 
     exit(0);
 }
