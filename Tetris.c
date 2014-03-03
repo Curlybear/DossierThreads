@@ -83,6 +83,7 @@ pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCour
 pthread_mutex_t mutexPiecesEnCours;
 pthread_mutex_t mutexScore;
 pthread_mutex_t mutexParamThreadCase;
+pthread_mutex_t mutexParamThreadJoueursConnectes;
 pthread_mutex_t mutexAnalyse;
 pthread_mutex_t mutexTraitement;
 
@@ -114,10 +115,12 @@ void *threadScore(void*);
 void *threadCase(void*);
 void *threadGravite(void*);
 void *threadFinPartie(void*);
+void *threadJoueursConnectes(void *);
 
 // Sig Handlers
 void handlerSIGUSR1(int sig);
 void handlerSIGUSR2(int sig);
+void handlerSIGHUP(int sig);
 
 // DEBUG
 void displayTab();
@@ -130,7 +133,8 @@ int main(int argc, char* argv[]) {
     CASE tmpCase;
     EVENT_GRILLE_SDL event;
 
-    // initialisation de pieceEnCours dans le cas où le thread gravité se lance avant le thread pièce.
+    // Initialisation de pieceEnCours dans le cas où
+    // le thread gravité se lance avant le thread pièce.
     pieceEnCours=pieces[0];
 
     pthread_key_create(&keyCase, suppressionCase);
@@ -140,6 +144,7 @@ int main(int argc, char* argv[]) {
     pthread_t eventHandle;
     pthread_t scoreHandle;
     pthread_t graviteHandle;
+    pthread_t joueursConnectesHandle;
 
     srand((unsigned)time(NULL));
 
@@ -150,6 +155,7 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&mutexParamThreadCase, NULL);
     pthread_mutex_init(&mutexAnalyse, NULL);
     pthread_mutex_init(&mutexTraitement, NULL);
+    pthread_mutex_init(&mutexParamThreadJoueursConnectes, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
     pthread_cond_init(&condScore, NULL);
@@ -169,13 +175,32 @@ int main(int argc, char* argv[]) {
     ChargementImages();
     DessineSprite(12, 11, VOYANT_VERT);
 
-    // Armement de signaux
+    // Initialisation des trucs de signaux
     struct sigaction sigAct;
     sigset_t mask;
     sigemptyset(&sigAct.sa_mask);
-    sigemptyset(&mask);
-    sigAct.sa_handler=handlerSIGUSR1;
     sigAct.sa_flags = 0;
+    sigemptyset(&mask);
+
+    // On ne se connecte au serveur que si on a les arguments
+    if(argc == 3) {
+        // Armement de SIGHUP pour threadJoueursConnectes
+        sigAct.sa_handler = handlerSIGHUP;
+        sigaction(SIGHUP, &sigAct, NULL);
+        if(pthread_create(&joueursConnectesHandle, NULL, threadJoueursConnectes, argv) != 0) {
+            fprintf(stderr, "Erreur de lancement de threadJoueursConnectes\n");
+        }
+        pthread_mutex_lock(&mutexParamThreadJoueursConnectes);
+        pthread_mutex_lock(&mutexParamThreadJoueursConnectes);
+        pthread_mutex_unlock(&mutexParamThreadJoueursConnectes);
+    }
+
+    // Masquage pour les threads suivants
+    sigaddset(&mask, SIGHUP);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
+    // Armement de SIGUSR1
+    sigAct.sa_handler = handlerSIGUSR1;
     sigaction(SIGUSR1, &sigAct, NULL);
 
     pthread_mutex_lock(&mutexParamThreadCase);
@@ -184,7 +209,7 @@ int main(int argc, char* argv[]) {
             tmpCase.ligne = i;
             tmpCase.colonne = j;
 
-            if((errno = pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
+            if(pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase) != 0) {
                 fprintf(stderr, "Erreur de lancement du threadCase[%d][%d]", i, j);
             }
             pthread_mutex_lock(&mutexParamThreadCase);
@@ -192,34 +217,36 @@ int main(int argc, char* argv[]) {
     }
     pthread_mutex_unlock(&mutexParamThreadCase);
 
+    // Masquage pour les threads suivants
     sigaddset(&mask, SIGUSR1);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
     sigAct.sa_handler=handlerSIGUSR2;
     sigAct.sa_flags = 0;
     sigaction(SIGUSR2, &sigAct, NULL);
 
-    if((errno = pthread_create(&finPartieHandle, NULL, threadFinPartie, NULL)) != 0) {
+    if(pthread_create(&finPartieHandle, NULL, threadFinPartie, NULL) != 0) {
         fprintf(stderr, "Erreur de lancement du threadFinPartie");
     }
 
-    // Masquage du signal pour les autres threads
+    // Masquage pour les threads suivants
     sigaddset(&mask, SIGUSR2);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
-    if((errno = pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL)) != 0) {
+    if(pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL) != 0) {
         perror("Erreur de lancement du threadDefileMessage");
     }
     pthread_detach(defileMessageHandle);
-    if((errno = pthread_create(&pieceHandle, NULL, threadPiece, NULL)) != 0) {
+    if(pthread_create(&pieceHandle, NULL, threadPiece, NULL) != 0) {
        perror("Erreur de lancement du threadPiece");
     }
-    if((errno = pthread_create(&scoreHandle, NULL, threadScore, NULL)) != 0) {
+    if(pthread_create(&scoreHandle, NULL, threadScore, NULL) != 0) {
        perror("Erreur de lancement du threadScore");
     }
-    if((errno = pthread_create(&graviteHandle, NULL, threadGravite, NULL)) != 0) {
+    if(pthread_create(&graviteHandle, NULL, threadGravite, NULL) != 0) {
        perror("Erreur de lancement du threadGravite");
     }
-    if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
+    if(pthread_create(&eventHandle, NULL, threadEvent, NULL) != 0) {
         perror("Erreur de lancement du threadEvent");
     }
     // Attente de la fin du threadEvent.
@@ -389,7 +416,7 @@ void* threadEvent(void*) {
         event = ReadEvent();
         switch(event.type) {
             case CROIX:
-                return NULL;
+                pthread_cancel(finPartieHandle); // TODO This seems to be buggy...
 
             case CLIC_GAUCHE:
                 pthread_mutex_lock(&mutexTab);
@@ -630,6 +657,22 @@ void *threadFinPartie(void *) {
     }
 }
 
+void *threadJoueursConnectes(void *p) {
+    // TODO Connexion au serveur et affichage du nombre de joueurs connectés
+    char **argv = (char**) p;
+    ++argv;
+    key_t cle = atoi(*argv++);
+    char pseudo[strlen(*argv)+1];
+    strcpy(pseudo, *argv);
+
+    printf("'%d' : '%s'\n", cle, pseudo);
+
+    pthread_mutex_unlock(&mutexParamThreadJoueursConnectes);
+    for(;;) {
+        pause();
+    }
+}
+
 
 /**
  * Retourne la partie du message défilant
@@ -851,6 +894,13 @@ void handlerSIGUSR2(int sig){
     pthread_exit(NULL);
 }
 
+/**
+ * Fonction lancée lorsque le serveur envoie un SIGHUP
+ * (càd, lorsqu'un joueur se (dé)connecte.)
+ */
+void handlerSIGHUP(int sig) {
+
+}
 
 /**
  * Trie un vecteur par ordre croissant si en dessous du centre
