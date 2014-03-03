@@ -464,7 +464,6 @@ void *threadGravite(void *p) {
 
         // On passe son tour si pas de ligne / colonne complète
         if(nbColonnesCompletes <= 0 && nbLignesCompletes <= 0) {
-            printf("(Thread Grivity) SIGURS2");
             pthread_kill(finPartieHandle,SIGUSR2);
             continue;
         }
@@ -583,7 +582,6 @@ void *threadGravite(void *p) {
         pthread_cond_signal(&condScore);
         pthread_mutex_unlock(&mutexScore);
 
-        printf("(Thread Grivity) SIGURS2");
         pthread_kill(finPartieHandle,SIGUSR2);
 
     }
@@ -796,11 +794,9 @@ void handlerSIGUSR2(int sig){
             for(k = 0; k < 4; ++k) {
                 if(i+pieceEnCours.cases[k].ligne < NB_LIGNES && j+pieceEnCours.cases[k].colonne < 10) {
                     if(tab[i+pieceEnCours.cases[k].ligne][j+pieceEnCours.cases[k].colonne] == 1) {
-                        printf("(HANDLER SIGUSR2) Case occupée");
                         break;
                     }
                 } else {
-                    printf("(HANDLER SIGUSR2) Case hors du tableau");
                     break;
                 }
             }
