@@ -69,7 +69,7 @@ int   colonnesCompletes[4];
 int   nbColonnesCompletes;
 int   nbAnalyses = 0;
 int   traitementEnCours = 0;
-key_t cle;                     // Clé passée en paramètre (utile pour la connexion au serveur)
+key_t cle = 0;                 // Clé passée en paramètre (utile pour la connexion au serveur)
 char *pseudo = NULL;           // Pseudo du joueur en cours
 
 // Thread Handle
@@ -203,6 +203,14 @@ int main(int argc, char* argv[]) {
         if(pthread_create(&joueursConnectesHandle, NULL, threadJoueursConnectes, NULL) != 0) {
             fprintf(stderr, "Erreur de lancement de threadJoueursConnectes\n");
         }
+
+        // Armement de SIGQUIT
+        sigAct.sa_handler = handlerSIGQUIT;
+        sigaction(SIGQUIT, &sigAct, NULL);
+
+        if(pthread_create(&topScoreHandle, NULL, threadTopScore, NULL) != 0) {
+            perror("Erreur de lancement du threadTopScore");
+        }
     }
 
     // Masquage pour les threads suivants
@@ -260,13 +268,6 @@ int main(int argc, char* argv[]) {
         perror("Erreur de lancement du threadEvent");
     }
 
-    // Armement de SIGUSR1
-    sigAct.sa_handler = handlerSIGQUIT;
-    sigaction(SIGQUIT, &sigAct, NULL);
-
-    if(pthread_create(&topScoreHandle, NULL, threadTopScore, NULL) != 0) {
-        perror("Erreur de lancement du threadTopScore");
-    }
     // Attente de la fin du threadFinPartie.
     printf("Attente de la fin du jeu\n");
     pthread_join(finPartieHandle, NULL);
