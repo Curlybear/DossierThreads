@@ -69,6 +69,8 @@ int   colonnesCompletes[4];
 int   nbColonnesCompletes;
 int   nbAnalyses = 0;
 int   traitementEnCours = 0;
+key_t cle;                     // Clé passée en paramètre (utile pour la connexion au serveur)
+char *pseudo;                  // Pseudo du joueur en cours
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
@@ -83,7 +85,6 @@ pthread_mutex_t mutexMessage; // Mutex pour message, tailleMessage et indiceCour
 pthread_mutex_t mutexPiecesEnCours;
 pthread_mutex_t mutexScore;
 pthread_mutex_t mutexParamThreadCase;
-pthread_mutex_t mutexParamThreadJoueursConnectes;
 pthread_mutex_t mutexAnalyse;
 pthread_mutex_t mutexTraitement;
 
@@ -155,7 +156,6 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&mutexParamThreadCase, NULL);
     pthread_mutex_init(&mutexAnalyse, NULL);
     pthread_mutex_init(&mutexTraitement, NULL);
-    pthread_mutex_init(&mutexParamThreadJoueursConnectes, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
     pthread_cond_init(&condScore, NULL);
@@ -184,15 +184,17 @@ int main(int argc, char* argv[]) {
 
     // On ne se connecte au serveur que si on a les arguments
     if(argc == 3) {
+        ++argv;
+        cle = atoi(*argv++);
+        pseudo = (char*) malloc(strlen(*argv) + 1);
+        strcpy(pseudo, *argv);
+
         // Armement de SIGHUP pour threadJoueursConnectes
         sigAct.sa_handler = handlerSIGHUP;
         sigaction(SIGHUP, &sigAct, NULL);
-        if(pthread_create(&joueursConnectesHandle, NULL, threadJoueursConnectes, argv) != 0) {
+        if(pthread_create(&joueursConnectesHandle, NULL, threadJoueursConnectes, NULL) != 0) {
             fprintf(stderr, "Erreur de lancement de threadJoueursConnectes\n");
         }
-        pthread_mutex_lock(&mutexParamThreadJoueursConnectes);
-        pthread_mutex_lock(&mutexParamThreadJoueursConnectes);
-        pthread_mutex_unlock(&mutexParamThreadJoueursConnectes);
     }
 
     // Masquage pour les threads suivants
@@ -268,6 +270,7 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_cancel(defileMessageHandle);
+    free(pseudo);
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
@@ -658,16 +661,13 @@ void *threadFinPartie(void *) {
 }
 
 void *threadJoueursConnectes(void *p) {
-    // TODO Connexion au serveur et affichage du nombre de joueurs connectés
-    char **argv = (char**) p;
-    ++argv;
-    key_t cle = atoi(*argv++);
-    char pseudo[strlen(*argv)+1];
-    strcpy(pseudo, *argv);
+    printf("(THREAD JOUEURS CONNECTES) starting with '%d' : '%s'\n", cle, pseudo);
 
-    printf("'%d' : '%s'\n", cle, pseudo);
+    if(ConnectionServeur(cle, pseudo) != 0) {
+        fprintf(stderr, "(THREAD JOUEURS CONNECTES) Erreur de connexion au serveur\n");
+        pthread_exit(NULL);
+    }
 
-    pthread_mutex_unlock(&mutexParamThreadJoueursConnectes);
     for(;;) {
         pause();
     }
@@ -899,7 +899,14 @@ void handlerSIGUSR2(int sig){
  * (càd, lorsqu'un joueur se (dé)connecte.)
  */
 void handlerSIGHUP(int sig) {
-
+    int nb = GetNbJoueursConnectes(cle);
+    printf("(THREAD JOUEURS CONNECTES) Mise à jours du nombre de joueurs connectes : %d\n", nb);
+    char buff[3];
+    if(nb > 0) {
+        sprintf(buff, "%2d", nb);
+        DessineSprite(12, 17, CHIFFRE_0 + (buff[0] == ' ' ? 0 : buff[0] - '0'));
+        DessineSprite(12, 18, CHIFFRE_0 + (buff[1] == ' ' ? 0 : buff[1] - '0'));
+    }
 }
 
 /**
