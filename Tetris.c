@@ -100,6 +100,7 @@ int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
 void  gravityVectorSorting(int[], int, int);
+void  setTraitementEnCours(int);
 
 void  suppressionCase(void*);
 
@@ -345,6 +346,7 @@ void* threadPiece(void*) {
 
             printf("(THREAD PIECE) Yipee!\n");
         } else {
+            setTraitementEnCours(0);
             setPiece(casesInserees, VIDE, nbCasesInserees);
             shouldNewPiece = 0;
             printf("(THREAD PIECE) Boohh!\n");
@@ -370,7 +372,6 @@ void* threadEvent(void*) {
 
             case CLIC_GAUCHE:
                 pthread_mutex_lock(&mutexTab);
-                pthread_mutex_lock(&mutexTraitement);
                 if(event.colonne < 10 && tab[event.ligne][event.colonne] == 0 && !traitementEnCours) {
                     // printf("(THREAD EVENT) Clic gauche\n");
                     pthread_mutex_lock(&mutexPiecesEnCours);
@@ -381,12 +382,11 @@ void* threadEvent(void*) {
 
                     DessineSprite(event.ligne, event.colonne, pieceEnCours.professeur);
                     if(nbCasesInserees == pieceEnCours.nbCases) {
-                        traitementEnCours = 1;
+                        setTraitementEnCours(1);
                     }
                     pthread_cond_signal(&condNbPiecesEnCours);
                     pthread_mutex_unlock(&mutexPiecesEnCours);
                 }
-                pthread_mutex_unlock(&mutexTraitement);
                 pthread_mutex_unlock(&mutexTab);
                 break;
 
@@ -598,6 +598,7 @@ void *threadGravite(void *p) {
 void *threadFinPartie(void *) {
     for(;;) {
         pause();
+        setTraitementEnCours(0);
     }
 }
 
@@ -812,7 +813,6 @@ void handlerSIGUSR2(int sig){
             pthread_mutex_unlock(&mutexPiecesEnCours);
             if(k == 4) {
                 pthread_mutex_lock(&mutexTraitement);
-                traitementEnCours = 0;
                 pthread_mutex_unlock(&mutexTraitement);
                 return;
             }
@@ -846,6 +846,20 @@ void gravityVectorSorting(int vector[], int size, int center) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Défini si il y a un traitement en cours
+ */
+void setTraitementEnCours(int enCours) {
+    pthread_mutex_lock(&mutexTraitement);
+    traitementEnCours = enCours;
+    pthread_mutex_unlock(&mutexTraitement);
+    if(enCours) {
+        DessineSprite(12, 11, VOYANT_BLEU);
+    } else {
+        DessineSprite(12, 11, VOYANT_VERT);
     }
 }
 
