@@ -103,6 +103,8 @@ void  gravityVectorSorting(int[], int, int);
 void  setTraitementEnCours(int);
 
 void  suppressionCase(void*);
+void  freeMessage(void*);
+
 
 // THREADS
 void *threadDefileMessage(void*);
@@ -126,6 +128,7 @@ int main(int argc, char* argv[]) {
     char buffer[80];
     char ok = 0;
     CASE tmpCase;
+    EVENT_GRILLE_SDL event;
 
     // initialisation de pieceEnCours dans le cas où le thread gravité se lance avant le thread pièce.
     pieceEnCours=pieces[0];
@@ -221,12 +224,30 @@ int main(int argc, char* argv[]) {
     }
     // Attente de la fin du threadEvent.
     // Le threadEvent se termine quand le joueur clique sur la croix.
-    pthread_join(eventHandle, NULL);
+    pthread_join(finPartieHandle, NULL);
+
+    pthread_cancel(eventHandle);
+
+    for(i = 0; i < 14; ++i) {
+        for(j = 0; j < 10; ++j) {
+            pthread_cancel(threadCaseHandle[i][j]);
+        }
+    }
+
+    for(;;) {
+        event = ReadEvent();
+        if (event.type==CROIX)
+        {
+            break;
+        }
+    }
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
+
+
 
     exit(0);
 }
@@ -251,6 +272,8 @@ void* threadDefileMessage(void*) {
     struct timespec t;
     printf("(THREAD MESSAGE) Lancement du thread message\n");
 
+    pthread_cleanup_push(freeMessage,NULL);
+
     setMessage("Bienvenue dans Tetris Zero Gravity");
     // Message de taille 8 de (11, 10) à (19, 10)
 
@@ -268,6 +291,7 @@ void* threadDefileMessage(void*) {
         pthread_mutex_unlock(&mutexMessage);
         nanosleep(&t, NULL);
     }
+    pthread_cleanup_pop(1);
 }
 
 /**
@@ -721,6 +745,8 @@ void setPiece(CASE cases[], int type, int nbCases) {
 }
 
 void suppressionCase(void *p) {
+    printf("(suppressionCase) Free du threadCase\n");
+
     free(pthread_getspecific(keyCase));
 }
 
@@ -884,3 +910,9 @@ void displayTab() {
     }
     printf("===============================\n");
 }
+
+void freeMessage(void*){
+    printf("(FreeMessage) Free de message\n");
+    free(message);
+}
+
