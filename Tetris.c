@@ -184,6 +184,7 @@ int main(int argc, char* argv[]) {
     sigemptyset(&mask);
 
     sigaddset(&mask, SIGQUIT);
+    sigaddset(&mask, SIGINT);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
     // On ne se connecte au serveur que si on a les arguments
@@ -673,6 +674,11 @@ void *threadGravite(void *p) {
 }
 
 void *threadFinPartie(void *) {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
     for(;;) {
         pause();
         setTraitementEnCours(0);
