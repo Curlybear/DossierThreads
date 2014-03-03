@@ -68,6 +68,7 @@ int   nbLignesCompletes;
 int   colonnesCompletes[4];
 int   nbColonnesCompletes;
 int   nbAnalyses = 0;
+int   traitementEnCours = 0;
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
@@ -83,6 +84,7 @@ pthread_mutex_t mutexPiecesEnCours;
 pthread_mutex_t mutexScore;
 pthread_mutex_t mutexParamThreadCase;
 pthread_mutex_t mutexAnalyse;
+pthread_mutex_t mutexTraitement;
 
 // Cond's
 pthread_cond_t condNbPiecesEnCours;
@@ -143,6 +145,7 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&mutexScore, NULL);
     pthread_mutex_init(&mutexParamThreadCase, NULL);
     pthread_mutex_init(&mutexAnalyse, NULL);
+    pthread_mutex_init(&mutexTraitement, NULL);
 
     pthread_cond_init(&condNbPiecesEnCours, NULL);
     pthread_cond_init(&condScore, NULL);
@@ -367,7 +370,8 @@ void* threadEvent(void*) {
 
             case CLIC_GAUCHE:
                 pthread_mutex_lock(&mutexTab);
-                if(event.colonne < 10 && tab[event.ligne][event.colonne] == 0) {
+                pthread_mutex_lock(&mutexTraitement);
+                if(event.colonne < 10 && tab[event.ligne][event.colonne] == 0 && !traitementEnCours) {
                     // printf("(THREAD EVENT) Clic gauche\n");
                     pthread_mutex_lock(&mutexPiecesEnCours);
                     casesInserees[nbCasesInserees].ligne = event.ligne;
@@ -376,9 +380,13 @@ void* threadEvent(void*) {
                     tab[event.ligne][event.colonne] = 1;
 
                     DessineSprite(event.ligne, event.colonne, pieceEnCours.professeur);
-                    pthread_mutex_unlock(&mutexPiecesEnCours);
+                    if(nbCasesInserees == pieceEnCours.nbCases) {
+                        traitementEnCours = 1;
+                    }
                     pthread_cond_signal(&condNbPiecesEnCours);
+                    pthread_mutex_unlock(&mutexPiecesEnCours);
                 }
+                pthread_mutex_unlock(&mutexTraitement);
                 pthread_mutex_unlock(&mutexTab);
                 break;
 
@@ -464,7 +472,7 @@ void *threadGravite(void *p) {
 
         // On passe son tour si pas de ligne / colonne complète
         if(nbColonnesCompletes <= 0 && nbLignesCompletes <= 0) {
-            pthread_kill(finPartieHandle,SIGUSR2);
+            pthread_kill(finPartieHandle, SIGUSR2);
             continue;
         }
 
@@ -582,7 +590,7 @@ void *threadGravite(void *p) {
         pthread_cond_signal(&condScore);
         pthread_mutex_unlock(&mutexScore);
 
-        pthread_kill(finPartieHandle,SIGUSR2);
+        pthread_kill(finPartieHandle, SIGUSR2);
 
     }
 }
@@ -803,6 +811,9 @@ void handlerSIGUSR2(int sig){
             pthread_mutex_unlock(&mutexTab);
             pthread_mutex_unlock(&mutexPiecesEnCours);
             if(k == 4) {
+                pthread_mutex_lock(&mutexTraitement);
+                traitementEnCours = 0;
+                pthread_mutex_unlock(&mutexTraitement);
                 return;
             }
         }
