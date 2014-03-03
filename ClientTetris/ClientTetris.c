@@ -63,12 +63,12 @@ int ConnectionServeur(key_t cle,const char* pseudo)
   if (msgsnd(idQ,&Requete,sizeof(REQUETE)-sizeof(long),0) == -1)
     return -2;
 
-  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre 
+  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre
 
   if(msgrcv(idQ,&Reponse,sizeof(REPONSE)-sizeof(long),getpid(),IPC_NOWAIT) == -1)
     return -3;
 
-  if (!Reponse.ok) 
+  if (!Reponse.ok)
     return -4;
 
   return 0;
@@ -96,12 +96,12 @@ int EnvoiScore(key_t cle,int score)
   if (msgsnd(idQ,&Requete,sizeof(REQUETE)-sizeof(long),0) == -1)
     return -2;
 
-  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre 
+  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre
 
   if(msgrcv(idQ,&Reponse,sizeof(REPONSE)-sizeof(long),getpid(),IPC_NOWAIT) == -1)
     return -3;
 
-  if (!Reponse.ok) 
+  if (!Reponse.ok)
     return -4;
 
   return Reponse.topScoreBattu;
@@ -128,12 +128,12 @@ int DeconnectionServeur(key_t cle)
   if (msgsnd(idQ,&Requete,sizeof(REQUETE)-sizeof(long),0) == -1)
     return -2;
 
-  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre 
+  nanosleep(&delai,NULL); // delai laisse au serveur pour repondre
 
   if(msgrcv(idQ,&Reponse,sizeof(REPONSE)-sizeof(long),getpid(),IPC_NOWAIT) == -1)
     return -3;
 
-  if (!Reponse.ok) 
+  if (!Reponse.ok)
     return -4;
 
   return 0;
@@ -149,13 +149,13 @@ int GetNbJoueursConnectes(key_t cle)
   // Recuperation de l'id de la memoire partagee
   if ((idM = shmget(cle,0,0)) == -1)
     return -1;
-  
+
   // Attachement
   if ((pShm = (MEM*)shmat(idM,0,0)) == (MEM *)-1)
     return -2;
 
   nbJoueursConnectes = pShm->nbJoueursConnectes;
-  
+
   // Detachement
   if(shmdt(pShm))
     return -3;
@@ -172,13 +172,13 @@ int GetTopScore(key_t cle,TOPSCORE *pTopScore)
   // Recuperation de l'id de la memoire partagee
   if ((idM = shmget(cle,0,0)) == -1)
     return -1;
-  
+
   // Attachement
   if ((pShm = (MEM*)shmat(idM,0,0)) == (MEM *)-1)
     return -2;
 
   memcpy(pTopScore,&(pShm->TopScore),sizeof(TOPSCORE));
-  
+
   // Detachement
   if(shmdt(pShm))
     return -3;
