@@ -455,6 +455,8 @@ void *threadGravite(void *p) {
         while(nbAnalyses < pieceEnCours.nbCases) {
             pthread_cond_wait(&condAnalyse, &mutexAnalyse);
         }
+        // Reset du nombre d'analyse
+        nbAnalyses = 0;
         pthread_mutex_unlock(&mutexAnalyse);
 
         // On passe son tour si pas de ligne / colonne complète
@@ -577,11 +579,6 @@ void *threadGravite(void *p) {
         score += 5 * (nbColonnesCompletes + nbLignesCompletes);
         pthread_cond_signal(&condScore);
         pthread_mutex_unlock(&mutexScore);
-
-        // Reset du nombre d'analyse
-        pthread_mutex_lock(&mutexAnalyse);
-        nbAnalyses = 0;
-        pthread_mutex_unlock(&mutexAnalyse);
 
         printf("(Thread Grivity) SIGURS2");
         pthread_kill(finPartieHandle,SIGUSR2);
