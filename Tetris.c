@@ -107,6 +107,7 @@ void  setTraitementEnCours(int);
 void  suppressionCase(void*);
 void  freeMessage(void*);
 void  decoServeur(void*);
+void  sendScore(void*);
 
 
 // THREADS
@@ -273,9 +274,15 @@ int main(int argc, char* argv[]) {
     pthread_join(finPartieHandle, NULL);
     printf("Fin du jeu\n");
 
+    printf("Cancel du threadScore\n");
+    if(pthread_cancel(scoreHandle) != 0) {
+        fprintf(stderr, "thread score incancellable\n");
+    }
+
     if(pthread_cancel(eventHandle) != 0) {
         fprintf(stderr, "Event handle incancellable\n");
     }
+
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
             if(pthread_cancel(threadCaseHandle[i][j]) != 0) {
@@ -500,6 +507,7 @@ void* threadEvent(void*) {
 void *threadScore(void *a) {
     printf("(THREAD SCORE) Lancement du thread Score\n");
     char buff[5];
+    pthread_cleanup_push(sendScore, NULL);
     pthread_mutex_lock(&mutexScore);
     while(!majScore) {
         printf("(THREAD SCORE) MAJ du score : '%4d'\n", score);
@@ -512,6 +520,7 @@ void *threadScore(void *a) {
         majScore = 0;
     }
     pthread_mutex_unlock(&mutexScore);
+    pthread_cleanup_pop(1);
 }
 
 /**
@@ -703,6 +712,7 @@ void *threadJoueursConnectes(void *p) {
 
     if(ConnectionServeur(cle, pseudo) != 0) {
         fprintf(stderr, "(THREAD JOUEURS CONNECTES) Erreur de connexion au serveur\n");
+        cle = 0;
         pthread_exit(NULL);
     }
 
@@ -1026,9 +1036,22 @@ void freeMessage(void*) {
 
 void decoServeur(void*) {
     printf("(decoServeur) deco du serveur\n");
-    DeconnectionServeur(cle);
+    if(cle) {
+        DeconnectionServeur(cle);
+    }
 }
 
+void sendScore(void*) {
+    printf("(THREAD SCORE) Envoi du score...\n");
+    if(cle) {
+        if(EnvoiScore(cle, score)) {
+            setMessage("Game Over");
+        } else {
+            setMessage("Game Over mais vous avez obtenu le nouveau Top Score");
+        }
+    }
+    printf("(THREAD SCORE) Georges a fini d'envoyé le score...\n");
+}
 
 ///////////////////////////////////////////////////////////////////
 // DEBUG FUNCTIONS
