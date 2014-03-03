@@ -70,7 +70,7 @@ int   nbColonnesCompletes;
 int   nbAnalyses = 0;
 int   traitementEnCours = 0;
 key_t cle;                     // Clé passée en paramètre (utile pour la connexion au serveur)
-char *pseudo;                  // Pseudo du joueur en cours
+char *pseudo = NULL;           // Pseudo du joueur en cours
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
@@ -252,26 +252,39 @@ int main(int argc, char* argv[]) {
     if(pthread_create(&eventHandle, NULL, threadEvent, NULL) != 0) {
         perror("Erreur de lancement du threadEvent");
     }
-    // Attente de la fin du threadEvent.
-    // Le threadEvent se termine quand le joueur clique sur la croix.
+    // Attente de la fin du threadFinPartie.
+    printf("Attente de la fin du jeu\n");
     pthread_join(finPartieHandle, NULL);
+    printf("Fin du jeu\n");
 
-    pthread_cancel(eventHandle);
+    if(pthread_cancel(eventHandle) != 0) {
+        fprintf(stderr, "Event handle incancellable\n");
+    }
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
-            pthread_cancel(threadCaseHandle[i][j]);
+            if(pthread_cancel(threadCaseHandle[i][j]) != 0) {
+                fprintf(stderr, "threadCase[%d][%d] incancellable\n", i, j);
+            }
         }
     }
 
     for(;;) {
+        printf("Attente de la fermeture de la fenetre\n");
         event = ReadEvent();
         if (event.type == CROIX) {
             break;
         }
     }
 
-    pthread_cancel(defileMessageHandle);
-    free(pseudo);
+    printf("Fermeture de threadDefileMessage\n");
+    if(pthread_cancel(defileMessageHandle) != 0) {
+        fprintf(stderr, "threadDefileMessage incancellable\n");
+    }
+
+    if(pseudo) {
+        printf("free(pseudo) : %x\n", pseudo);
+        free(pseudo);
+    }
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
@@ -955,7 +968,9 @@ void setTraitementEnCours(int enCours) {
 
 void freeMessage(void*) {
     printf("(FreeMessage) Free de message\n");
-    free(message);
+    if(message) {
+        free(message);
+    }
 }
 
 void decoServeur(void*) {
