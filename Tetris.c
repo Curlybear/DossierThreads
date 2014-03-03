@@ -266,8 +266,7 @@ void* threadPiece(void*) {
             }
             // TODO Remettre ça comme il faut!
             // pieceEnCours = pieces[random(0, 7)];
-            pieceEnCours = pieces[6]; // DEBUG!!!!!!!!
-            rotationPiece(&pieceEnCours); // DEBUG!!!!!!!!
+            pieceEnCours = pieces[0]; // DEBUG!!!!!!!!
             // for(i = 0; i < random(0, 4); ++i) {
             //     rotationPiece(&pieceEnCours);
             // }
@@ -522,7 +521,13 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
-                // TODO Suppression de la première colonne
+                // Suppression de la première colonne
+                for(j = 0; j < NB_LIGNES; ++j) {
+                    pthread_mutex_lock(&mutexTab);
+                    tab[j][0] = 0;
+                    EffaceCarre(j, 0);
+                    pthread_mutex_unlock(&mutexTab);
+                }
             } else {
                 // Mouvement vers la gauche
                 for(j = 8; j < colonnesCompletes[i]; ++j) {
@@ -537,7 +542,13 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
-                // TODO Suppression de la dernière colonne
+                // Suppression de la première colonne
+                for(j = 0; j < NB_LIGNES; ++j) {
+                    pthread_mutex_lock(&mutexTab);
+                    tab[j][9] = 0;
+                    EffaceCarre(j, 9);
+                    pthread_mutex_unlock(&mutexTab);
+                }
             }
         }
 
