@@ -474,7 +474,13 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
-                // TODO Suppression de la première ligne
+                // Suppression de la première ligne
+                for(j = 0; j < 10; ++j) {
+                    pthread_mutex_lock(&mutexTab);
+                    tab[0][j] = 0;
+                    EffaceCarre(0, j);
+                    pthread_mutex_unlock(&mutexTab);
+                }
             } else {
                 // Mouvement vers le haut
                 for(j = lignesCompletes[i]; j < 13; ++j) {
@@ -489,7 +495,13 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
-                // TODO Suppression de la dernière ligne
+                // Suppression de la dernière ligne
+                for(j = 0; j < 10; ++j) {
+                    pthread_mutex_lock(&mutexTab);
+                    tab[13][j] = 0;
+                    EffaceCarre(13, j);
+                    pthread_mutex_unlock(&mutexTab);
+                }
             }
         }
 
@@ -499,7 +511,7 @@ void *threadGravite(void *p) {
             if(colonnesCompletes[i] < 7) {
                 // Mouvement vers la droite
                 for(j = 0; j < 14; ++j) { // TODO Parcourir du centre vers la gauche
-                    for(k = 0; k < colonnesCompletes[i]; ++k) {
+                    for(k = colonnesCompletes[i]; k != 0; --k) {
                         pthread_mutex_lock(&mutexTab);
                         tab[j][k] = tab[j][k+1];
                         if(tab[j][k]) {
