@@ -69,6 +69,8 @@ int   colonnesCompletes[4];
 int   nbColonnesCompletes;
 int   nbAnalyses = 0;
 int   traitementEnCours = 0;
+key_t cle;                     // Clé passée en paramètre (utile pour la connexion au serveur)
+char *pseudo = NULL;           // Pseudo du joueur en cours
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
@@ -104,6 +106,7 @@ void  setTraitementEnCours(int);
 
 void  suppressionCase(void*);
 void  freeMessage(void*);
+void  decoServeur(void*);
 
 
 // THREADS
@@ -114,10 +117,12 @@ void *threadScore(void*);
 void *threadCase(void*);
 void *threadGravite(void*);
 void *threadFinPartie(void*);
+void *threadJoueursConnectes(void *);
 
 // Sig Handlers
 void handlerSIGUSR1(int sig);
 void handlerSIGUSR2(int sig);
+void handlerSIGHUP(int sig);
 
 // DEBUG
 void displayTab();
@@ -130,7 +135,8 @@ int main(int argc, char* argv[]) {
     CASE tmpCase;
     EVENT_GRILLE_SDL event;
 
-    // initialisation de pieceEnCours dans le cas où le thread gravité se lance avant le thread pièce.
+    // Initialisation de pieceEnCours dans le cas où
+    // le thread gravité se lance avant le thread pièce.
     pieceEnCours=pieces[0];
 
     pthread_key_create(&keyCase, suppressionCase);
@@ -140,6 +146,7 @@ int main(int argc, char* argv[]) {
     pthread_t eventHandle;
     pthread_t scoreHandle;
     pthread_t graviteHandle;
+    pthread_t joueursConnectesHandle;
 
     srand((unsigned)time(NULL));
 
@@ -169,13 +176,38 @@ int main(int argc, char* argv[]) {
     ChargementImages();
     DessineSprite(12, 11, VOYANT_VERT);
 
-    // Armement de signaux
+    // Initialisation des trucs de signaux
     struct sigaction sigAct;
     sigset_t mask;
     sigemptyset(&sigAct.sa_mask);
-    sigemptyset(&mask);
-    sigAct.sa_handler=handlerSIGUSR1;
     sigAct.sa_flags = 0;
+    sigemptyset(&mask);
+
+    sigaddset(&mask, SIGQUIT);
+    sigaddset(&mask, SIGINT);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
+    // On ne se connecte au serveur que si on a les arguments
+    if(argc == 3) {
+        ++argv;
+        cle = atoi(*argv++);
+        pseudo = (char*) malloc(strlen(*argv) + 1);
+        strcpy(pseudo, *argv);
+
+        // Armement de SIGHUP pour threadJoueursConnectes
+        sigAct.sa_handler = handlerSIGHUP;
+        sigaction(SIGHUP, &sigAct, NULL);
+        if(pthread_create(&joueursConnectesHandle, NULL, threadJoueursConnectes, NULL) != 0) {
+            fprintf(stderr, "Erreur de lancement de threadJoueursConnectes\n");
+        }
+    }
+
+    // Masquage pour les threads suivants
+    sigaddset(&mask, SIGHUP);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
+    // Armement de SIGUSR1
+    sigAct.sa_handler = handlerSIGUSR1;
     sigaction(SIGUSR1, &sigAct, NULL);
 
     pthread_mutex_lock(&mutexParamThreadCase);
@@ -184,7 +216,7 @@ int main(int argc, char* argv[]) {
             tmpCase.ligne = i;
             tmpCase.colonne = j;
 
-            if((errno = pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase)) != 0) {
+            if(pthread_create(&threadCaseHandle[i][j], NULL, threadCase, &tmpCase) != 0) {
                 fprintf(stderr, "Erreur de lancement du threadCase[%d][%d]", i, j);
             }
             pthread_mutex_lock(&mutexParamThreadCase);
@@ -192,60 +224,78 @@ int main(int argc, char* argv[]) {
     }
     pthread_mutex_unlock(&mutexParamThreadCase);
 
+    // Masquage pour les threads suivants
     sigaddset(&mask, SIGUSR1);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
     sigAct.sa_handler=handlerSIGUSR2;
     sigAct.sa_flags = 0;
     sigaction(SIGUSR2, &sigAct, NULL);
 
-    if((errno = pthread_create(&finPartieHandle, NULL, threadFinPartie, NULL)) != 0) {
+    if(pthread_create(&finPartieHandle, NULL, threadFinPartie, NULL) != 0) {
         fprintf(stderr, "Erreur de lancement du threadFinPartie");
     }
 
-    // Masquage du signal pour les autres threads
+    // Masquage pour les threads suivants
     sigaddset(&mask, SIGUSR2);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
-    if((errno = pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL)) != 0) {
+    if(pthread_create(&defileMessageHandle, NULL, threadDefileMessage, NULL) != 0) {
         perror("Erreur de lancement du threadDefileMessage");
     }
     pthread_detach(defileMessageHandle);
-    if((errno = pthread_create(&pieceHandle, NULL, threadPiece, NULL)) != 0) {
+    if(pthread_create(&pieceHandle, NULL, threadPiece, NULL) != 0) {
        perror("Erreur de lancement du threadPiece");
     }
-    if((errno = pthread_create(&scoreHandle, NULL, threadScore, NULL)) != 0) {
+    if(pthread_create(&scoreHandle, NULL, threadScore, NULL) != 0) {
        perror("Erreur de lancement du threadScore");
     }
-    if((errno = pthread_create(&graviteHandle, NULL, threadGravite, NULL)) != 0) {
+    if(pthread_create(&graviteHandle, NULL, threadGravite, NULL) != 0) {
        perror("Erreur de lancement du threadGravite");
     }
-    if((errno = pthread_create(&eventHandle, NULL, threadEvent, NULL)) != 0) {
+    if(pthread_create(&eventHandle, NULL, threadEvent, NULL) != 0) {
         perror("Erreur de lancement du threadEvent");
     }
-    // Attente de la fin du threadEvent.
-    // Le threadEvent se termine quand le joueur clique sur la croix.
+    // Attente de la fin du threadFinPartie.
+    printf("Attente de la fin du jeu\n");
     pthread_join(finPartieHandle, NULL);
+    printf("Fin du jeu\n");
 
-    pthread_cancel(eventHandle);
+    if(pthread_cancel(eventHandle) != 0) {
+        fprintf(stderr, "Event handle incancellable\n");
+    }
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
-            pthread_cancel(threadCaseHandle[i][j]);
+            if(pthread_cancel(threadCaseHandle[i][j]) != 0) {
+                fprintf(stderr, "threadCase[%d][%d] incancellable\n", i, j);
+            }
         }
     }
 
     for(;;) {
+        printf("Attente de la fermeture de la fenetre\n");
         event = ReadEvent();
         if (event.type == CROIX) {
             break;
         }
     }
 
-    pthread_cancel(defileMessageHandle);
+    printf("Fermeture de threadDefileMessage\n");
+    if(pthread_cancel(defileMessageHandle) != 0) {
+        fprintf(stderr, "threadDefileMessage incancellable\n");
+    }
+
+    if(pseudo) {
+        printf("free(pseudo) : %x\n", pseudo);
+        free(pseudo);
+    }
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
+    pthread_cancel(joueursConnectesHandle);
+    printf("DEBUG\n");
 
     exit(0);
 }
@@ -624,10 +674,30 @@ void *threadGravite(void *p) {
 }
 
 void *threadFinPartie(void *) {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
     for(;;) {
         pause();
         setTraitementEnCours(0);
     }
+}
+
+void *threadJoueursConnectes(void *p) {
+    printf("(THREAD JOUEURS CONNECTES) starting with '%d' : '%s'\n", cle, pseudo);
+    pthread_cleanup_push(decoServeur, NULL);
+
+    if(ConnectionServeur(cle, pseudo) != 0) {
+        fprintf(stderr, "(THREAD JOUEURS CONNECTES) Erreur de connexion au serveur\n");
+        pthread_exit(NULL);
+    }
+
+    for(;;) {
+        pause();
+    }
+    pthread_cleanup_pop(1);
 }
 
 
@@ -851,6 +921,20 @@ void handlerSIGUSR2(int sig){
     pthread_exit(NULL);
 }
 
+/**
+ * Fonction lancée lorsque le serveur envoie un SIGHUP
+ * (càd, lorsqu'un joueur se (dé)connecte.)
+ */
+void handlerSIGHUP(int sig) {
+    int nb = GetNbJoueursConnectes(cle);
+    printf("(THREAD JOUEURS CONNECTES) Mise à jours du nombre de joueurs connectes : %d\n", nb);
+    char buff[3];
+    if(nb > 0) {
+        sprintf(buff, "%2d", nb);
+        DessineSprite(12, 17, CHIFFRE_0 + (buff[0] == ' ' ? 0 : buff[0] - '0'));
+        DessineSprite(12, 18, CHIFFRE_0 + (buff[1] == ' ' ? 0 : buff[1] - '0'));
+    }
+}
 
 /**
  * Trie un vecteur par ordre croissant si en dessous du centre
@@ -891,6 +975,19 @@ void setTraitementEnCours(int enCours) {
     }
 }
 
+void freeMessage(void*) {
+    printf("(FreeMessage) Free de message\n");
+    if(message) {
+        free(message);
+    }
+}
+
+void decoServeur(void*) {
+    printf("(decoServeur) deco du serveur\n");
+    DeconnectionServeur(cle);
+}
+
+
 ///////////////////////////////////////////////////////////////////
 // DEBUG FUNCTIONS
 void displayTab() {
@@ -905,9 +1002,3 @@ void displayTab() {
     }
     printf("===============================\n");
 }
-
-void freeMessage(void*){
-    printf("(FreeMessage) Free de message\n");
-    free(message);
-}
-

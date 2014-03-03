@@ -6,7 +6,7 @@ typedef struct
 {
   char  login[20];
   char  pseudo[80];
-  int   score;  
+  int   score;
 } TOPSCORE;
 
 int ConnectionServeur(key_t cle,const char* pseudo);
