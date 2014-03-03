@@ -439,7 +439,7 @@ void* threadEvent(void*) {
         event = ReadEvent();
         switch(event.type) {
             case CROIX:
-                pthread_cancel(finPartieHandle); // TODO This seems to be buggy...
+                return NULL;
 
             case CLIC_GAUCHE:
                 pthread_mutex_lock(&mutexTab);
