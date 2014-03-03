@@ -183,6 +183,9 @@ int main(int argc, char* argv[]) {
     sigAct.sa_flags = 0;
     sigemptyset(&mask);
 
+    sigaddset(&mask, SIGQUIT);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
     // On ne se connecte au serveur que si on a les arguments
     if(argc == 3) {
         ++argv;
