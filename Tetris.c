@@ -96,7 +96,7 @@ int   compareCase(const void*, const void*);
 int   random(int, int);
 int   comparaisonPiece(CASE[], CASE[], int);
 void  setPiece(CASE[], int, int);
-void  gravityVectorSorting(CASE[], int, int);
+void  gravityVectorSorting(int[], int, int);
 
 void  suppressionCase(void*);
 
@@ -451,7 +451,6 @@ void *threadGravite(void *p) {
         // Attente de 2 secondes
         nanosleep(&t, NULL);
 
-        // TODO Suppression de la première/dernière ligne/colonne après chaque déplacement
         // TODO Trouver un truc générique histoire de pas se taper le même code 4 fois...
 
         // Tri des lignes et des colonnes complètes
@@ -464,7 +463,7 @@ void *threadGravite(void *p) {
             if(lignesCompletes[i] < 7) {
                 // Mouvement vers le bas
                 for(j = lignesCompletes[i]; j != 0; --j) {
-                    for(k = 0; k < NB_LIGNES; ++k) {
+                    for(k = 0; k < 10; ++k) {
                         pthread_mutex_lock(&mutexTab);
                         tab[j][k] = tab[j-1][k];
                         if(tab[j][k]) {
@@ -475,20 +474,22 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
+                // TODO Suppression de la première ligne
             } else {
                 // Mouvement vers le haut
-                for(j = 8; j < lignesCompletes[i]; ++j) {
-                    for(k = 0; k < NB_LIGNES; ++k) {
+                for(j = lignesCompletes[i]; j < 13; ++j) {
+                    for(k = 0; k < 10; ++k) {
                         pthread_mutex_lock(&mutexTab);
-                        tab[j+1][k] = tab[j][k];
+                        tab[j][k] = tab[j+1][k];
                         if(tab[j][k]) {
-                            DessineSprite(j+1, k, BRIQUE);
+                            DessineSprite(j, k, BRIQUE);
                         } else {
-                            EffaceCarre(j+1, k);
+                            EffaceCarre(j, k);
                         }
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
+                // TODO Suppression de la dernière ligne
             }
         }
 
@@ -509,6 +510,7 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
+                // TODO Suppression de la première colonne
             } else {
                 // Mouvement vers la gauche
                 for(j = 8; j < colonnesCompletes[i]; ++j) {
@@ -523,6 +525,7 @@ void *threadGravite(void *p) {
                         pthread_mutex_unlock(&mutexTab);
                     }
                 }
+                // TODO Suppression de la dernière colonne
             }
         }
 
@@ -733,7 +736,7 @@ void handlerSIGUSR1(int sig) {
  * Trie un vecteur par ordre croissant si en dessous du centre
  * et par ordre décroissant sinon (cf. énoncé p9).
  */
-void gravityVectorSorting(CASE vector[], int size, int center) {
+void gravityVectorSorting(int vector[], int size, int center) {
     int i, j, k;
     for(i = 0; i < size; ++i) {
         for(j = i; j < size; ++j) {
