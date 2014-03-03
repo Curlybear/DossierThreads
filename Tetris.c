@@ -386,6 +386,13 @@ void* threadEvent(void*) {
                     }
                     pthread_cond_signal(&condNbPiecesEnCours);
                     pthread_mutex_unlock(&mutexPiecesEnCours);
+                } else {
+                    DessineSprite(12, 11, VOYANT_ROUGE);
+                    struct timespec t;
+                    t.tv_sec = 0;
+                    t.tv_nsec = 250000000,
+                    nanosleep(&t, NULL);
+                    DessineSprite(12, 11, traitementEnCours ? VOYANT_BLEU : VOYANT_VERT);
                 }
                 pthread_mutex_unlock(&mutexTab);
                 break;
