@@ -711,13 +711,13 @@ void *threadJoueursConnectes(void *p) {
     pthread_cleanup_pop(1);
 }
 
-void *threadTopScore(void *){
+void *threadTopScore(void *) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGQUIT);
     pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 
-    for(;;){
+    for(;;) {
         pause();
     }
 }
@@ -912,8 +912,8 @@ void handlerSIGUSR1(int sig) {
     pthread_mutex_unlock(&mutexAnalyse);
 }
 
-void handlerSIGUSR2(int sig){
-    int i,j,k;
+void handlerSIGUSR2(int sig) {
+    int i, j, k;
 
     for(i = 0; i < NB_LIGNES; ++i) {
         for(j = 0; j < 10; ++j) {
@@ -958,7 +958,7 @@ void handlerSIGHUP(int sig) {
     }
 }
 
-void handlerSIGQUIT(int sig){
+void handlerSIGQUIT(int sig) {
     TOPSCORE topscore;
     char buffscore[5];
     char buffnom[30];
@@ -971,7 +971,7 @@ void handlerSIGQUIT(int sig){
     DessineSprite(8, 17, CHIFFRE_0 + (buffscore[2] == ' ' ? 0 : buffscore[2] - '0'));
     DessineSprite(8, 18, CHIFFRE_0 + (buffscore[3] == ' ' ? 0 : buffscore[3] - '0'));
 
-    sprintf(buffnom,"%s - %s" , topscore.login, topscore.pseudo);
+    sprintf(buffnom, "%s - %s" , topscore.login, topscore.pseudo);
 
     setMessage(buffnom);
 }
