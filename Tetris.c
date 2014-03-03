@@ -71,6 +71,7 @@ int   nbAnalyses = 0;
 
 // Thread Handle
 pthread_t threadCaseHandle[14][10];
+pthread_t finPartieHandle;
 
 // Key Specific
 pthread_key_t keyCase;
@@ -130,7 +131,6 @@ int main(int argc, char* argv[]) {
     pthread_t eventHandle;
     pthread_t scoreHandle;
     pthread_t graviteHandle;
-    pthread_t finPartieHandle;
 
     srand((unsigned)time(NULL));
 
@@ -459,6 +459,8 @@ void *threadGravite(void *p) {
 
         // On passe son tour si pas de ligne / colonne complète
         if(nbColonnesCompletes <= 0 && nbLignesCompletes <= 0) {
+            printf("(Thread Grivity) SIGURS2");
+            pthread_kill(finPartieHandle,SIGUSR2);
             continue;
         }
 
@@ -580,6 +582,10 @@ void *threadGravite(void *p) {
         pthread_mutex_lock(&mutexAnalyse);
         nbAnalyses = 0;
         pthread_mutex_unlock(&mutexAnalyse);
+
+        printf("(Thread Grivity) SIGURS2");
+        pthread_kill(finPartieHandle,SIGUSR2);
+
     }
 }
 
@@ -780,7 +786,41 @@ void handlerSIGUSR1(int sig) {
 }
 
 void handlerSIGUSR2(int sig){
+    int i,j,k;
 
+    for ( i = 0; i < NB_LIGNES; ++i) {
+
+        for ( j = 0; j < 10; ++j) {
+
+            pthread_mutex_lock(&mutexPiecesEnCours);
+            pthread_mutex_lock(&mutexTab);
+
+            for ( k = 0; k < 4; ++k) {
+
+                if (i+pieceEnCours.cases[k].ligne < NB_LIGNES && j+pieceEnCours.cases[k].colonne < 10){
+
+                    if (tab[i+pieceEnCours.cases[k].ligne][j+pieceEnCours.cases[k].colonne]==1){
+                        printf("(HANDLER SIGUSR2) Case occupée");
+                        break;
+                    }
+                }
+                else{
+                    printf("(HANDLER SIGUSR2) Case hors du tableau");
+
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&mutexTab);
+            pthread_mutex_unlock(&mutexPiecesEnCours);
+            if (k==4)
+            {
+                return;
+            }
+        }
+    }
+    printf("(HANDLER SIGUSR2) Plus de place");
+
+    pthread_exit(NULL);
 }
 
 
