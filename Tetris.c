@@ -124,6 +124,9 @@ int main(int argc, char* argv[]) {
     char ok = 0;
     CASE tmpCase;
 
+    // initialisation de pieceEnCours dans le cas où le thread gravité se lance avant le thread pièce.
+    pieceEnCours=pieces[0];
+
     pthread_key_create(&keyCase, suppressionCase);
 
     pthread_t defileMessageHandle;
