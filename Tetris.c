@@ -118,11 +118,13 @@ void *threadCase(void*);
 void *threadGravite(void*);
 void *threadFinPartie(void*);
 void *threadJoueursConnectes(void *);
+void *threadTopScore(void *);
 
 // Sig Handlers
 void handlerSIGUSR1(int sig);
 void handlerSIGUSR2(int sig);
 void handlerSIGHUP(int sig);
+void handlerSIGQUIT(int sig);
 
 // DEBUG
 void displayTab();
@@ -147,6 +149,7 @@ int main(int argc, char* argv[]) {
     pthread_t scoreHandle;
     pthread_t graviteHandle;
     pthread_t joueursConnectesHandle;
+    pthread_t topScoreHandle;
 
     srand((unsigned)time(NULL));
 
@@ -255,6 +258,14 @@ int main(int argc, char* argv[]) {
     }
     if(pthread_create(&eventHandle, NULL, threadEvent, NULL) != 0) {
         perror("Erreur de lancement du threadEvent");
+    }
+
+    // Armement de SIGUSR1
+    sigAct.sa_handler = handlerSIGQUIT;
+    sigaction(SIGQUIT, &sigAct, NULL);
+
+    if(pthread_create(&topScoreHandle, NULL, threadTopScore, NULL) != 0) {
+        perror("Erreur de lancement du threadTopScore");
     }
     // Attente de la fin du threadFinPartie.
     printf("Attente de la fin du jeu\n");
@@ -700,6 +711,17 @@ void *threadJoueursConnectes(void *p) {
     pthread_cleanup_pop(1);
 }
 
+void *threadTopScore(void *){
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGQUIT);
+    pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
+    for(;;){
+        pause();
+    }
+}
+
 
 /**
  * Retourne la partie du message défilant
@@ -935,6 +957,25 @@ void handlerSIGHUP(int sig) {
         DessineSprite(12, 18, CHIFFRE_0 + (buff[1] == ' ' ? 0 : buff[1] - '0'));
     }
 }
+
+void handlerSIGQUIT(int sig){
+    TOPSCORE topscore;
+    char buffscore[5];
+    char buffnom[30];
+
+    GetTopScore(cle,&topscore);
+
+    sprintf(buffscore, "%4d", topscore.score);
+    DessineSprite(8, 15, CHIFFRE_0 + (buffscore[0] == ' ' ? 0 : buffscore[0] - '0'));
+    DessineSprite(8, 16, CHIFFRE_0 + (buffscore[1] == ' ' ? 0 : buffscore[1] - '0'));
+    DessineSprite(8, 17, CHIFFRE_0 + (buffscore[2] == ' ' ? 0 : buffscore[2] - '0'));
+    DessineSprite(8, 18, CHIFFRE_0 + (buffscore[3] == ' ' ? 0 : buffscore[3] - '0'));
+
+    sprintf(buffnom,"%s - %s" , topscore.login, topscore.pseudo);
+
+    setMessage(buffnom);
+}
+
 
 /**
  * Trie un vecteur par ordre croissant si en dessous du centre
