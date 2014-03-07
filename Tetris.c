@@ -276,6 +276,8 @@ int main(int argc, char* argv[]) {
     if(pthread_cancel(eventHandle) != 0) {
         fprintf(stderr, "Event handle incancellable\n");
     }
+    pthread_join(eventHandle, NULL);
+
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
             if(pthread_cancel(threadCaseHandle[i][j]) != 0) {
@@ -306,7 +308,9 @@ int main(int argc, char* argv[]) {
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
-    pthread_cancel(joueursConnectesHandle);
+    if(pthread_cancel(joueursConnectesHandle) != 0) {
+        fprintf(stderr, "Erreur de cancel de joueursConnectesHandle\n");
+    }
     printf("DEBUG\n");
 
     exit(0);
@@ -370,9 +374,9 @@ void* threadPiece(void*) {
             // TODO Remettre ça comme il faut!
             // pieceEnCours = pieces[random(0, 7)];
             pieceEnCours = pieces[0]; // DEBUG!!!!!!!!
-            // for(i = 0; i < random(0, 4); ++i) {
-            //     rotationPiece(&pieceEnCours);
-            // }
+            for(i = 0; i < random(0, 4); ++i) {
+                rotationPiece(&pieceEnCours);
+            }
             for(i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 3,
                     pieceEnCours.cases[i].colonne + 15, pieceEnCours.professeur);
@@ -446,6 +450,9 @@ void* threadPiece(void*) {
 void* threadEvent(void*) {
     printf("(THREAD EVENT) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
     for(;;) {
         event = ReadEvent();
