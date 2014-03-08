@@ -270,11 +270,11 @@ int main(int argc, char* argv[]) {
     }
 
     // Attente de la fin du threadFinPartie.
-    printf("Attente de la fin du jeu\n");
+    printf("(THREAD MAIN) Attente de la fin du jeu\n");
     pthread_join(finPartieHandle, NULL);
-    printf("Fin du jeu\n");
+    printf("(THREAD MAIN) Fin du jeu\n");
 
-    printf("Cancel du threadScore\n");
+    printf("(THREAD MAIN) Cancel du threadScore\n");
     if(pthread_cancel(scoreHandle) != 0) {
         fprintf(stderr, "thread score incancellable\n");
     }
@@ -293,14 +293,14 @@ int main(int argc, char* argv[]) {
     }
 
     for(;;) {
-        printf("Attente de la fermeture de la fenetre\n");
+        printf("(THREAD MAIN) Attente de la fermeture de la fenetre\n");
         event = ReadEvent();
         if (event.type == CROIX) {
             break;
         }
     }
 
-    printf("Fermeture de threadDefileMessage\n");
+    printf("(THREAD MAIN) Fermeture de threadDefileMessage\n");
     if(pthread_cancel(defileMessageHandle) != 0) {
         fprintf(stderr, "threadDefileMessage incancellable\n");
     }
