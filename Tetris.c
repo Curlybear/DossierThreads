@@ -458,6 +458,7 @@ void* threadEvent(void*) {
         event = ReadEvent();
         switch(event.type) {
             case CROIX:
+                pthread_cancel(finPartieHandle);
                 return NULL;
 
             case CLIC_GAUCHE:
@@ -720,10 +721,13 @@ void *threadJoueursConnectes(void *p) {
 }
 
 void *threadTopScore(void *) {
+    printf("(THREAD TOPSCORE) Starting...\n");
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGQUIT);
     pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
+    handlerSIGQUIT(SIGQUIT);
 
     for(;;) {
         pause();
@@ -967,11 +971,12 @@ void handlerSIGHUP(int sig) {
 }
 
 void handlerSIGQUIT(int sig) {
+    printf("(THREAD TOPSCORE) handlerSIGQUIT starting\n");
     TOPSCORE topscore;
     char buffscore[5];
     char buffnom[30];
 
-    GetTopScore(cle,&topscore);
+    GetTopScore(cle, &topscore);
 
     sprintf(buffscore, "%4d", topscore.score);
     DessineSprite(8, 15, CHIFFRE_0 + (buffscore[0] == ' ' ? 0 : buffscore[0] - '0'));
