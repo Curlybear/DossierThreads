@@ -310,14 +310,16 @@ int main(int argc, char* argv[]) {
         free(pseudo);
     }
 
-    // Fermeture de la grille de jeu (SDL)
-    printf("(THREAD MAIN) Fermeture de la grille...");
-    FermerGrilleSDL();
-    printf("OK\n");
     if(pthread_cancel(joueursConnectesHandle) != 0) {
         fprintf(stderr, "Erreur de cancel de joueursConnectesHandle\n");
     }
     printf("DEBUG\n");
+
+
+    // Fermeture de la grille de jeu (SDL)
+    printf("(THREAD MAIN) Fermeture de la grille...");
+    FermerGrilleSDL();
+    printf("OK\n");
 
     exit(0);
 }
