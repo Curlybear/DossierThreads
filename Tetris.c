@@ -586,8 +586,6 @@ void *threadGravite(void *p) {
         // Attente de 1.5 secondes + 0.5 un peu plus loin...
         nanosleep(&t1, NULL);
 
-        // TODO Trouver un truc générique histoire de pas se taper le même code 4 fois...
-
         // Tri des lignes et des colonnes complètes
         gravityVectorSorting(lignesCompletes, nbLignesCompletes, 7);
         gravityVectorSorting(colonnesCompletes, nbColonnesCompletes, 5);
