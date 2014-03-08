@@ -282,6 +282,7 @@ int main(int argc, char* argv[]) {
     if(pthread_cancel(eventHandle) != 0) {
         fprintf(stderr, "Event handle incancellable\n");
     }
+    pthread_join(eventHandle, NULL);
 
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
@@ -313,7 +314,9 @@ int main(int argc, char* argv[]) {
     printf("(THREAD MAIN) Fermeture de la grille...");
     FermerGrilleSDL();
     printf("OK\n");
-    pthread_cancel(joueursConnectesHandle);
+    if(pthread_cancel(joueursConnectesHandle) != 0) {
+        fprintf(stderr, "Erreur de cancel de joueursConnectesHandle\n");
+    }
     printf("DEBUG\n");
 
     exit(0);
@@ -377,9 +380,9 @@ void* threadPiece(void*) {
             // TODO Remettre ça comme il faut!
             // pieceEnCours = pieces[random(0, 7)];
             pieceEnCours = pieces[0]; // DEBUG!!!!!!!!
-            // for(i = 0; i < random(0, 4); ++i) {
-            //     rotationPiece(&pieceEnCours);
-            // }
+            for(i = 0; i < random(0, 4); ++i) {
+                rotationPiece(&pieceEnCours);
+            }
             for(i = 0; i < pieceEnCours.nbCases; ++i) {
                 DessineSprite(pieceEnCours.cases[i].ligne + 3,
                     pieceEnCours.cases[i].colonne + 15, pieceEnCours.professeur);
@@ -454,10 +457,14 @@ void* threadEvent(void*) {
     printf("(THREAD EVENT) Lancement du thread threadEvent\n");
     EVENT_GRILLE_SDL event;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
     for(;;) {
         event = ReadEvent();
         switch(event.type) {
             case CROIX:
+                pthread_cancel(finPartieHandle);
                 return NULL;
 
             case CLIC_GAUCHE:
@@ -723,10 +730,13 @@ void *threadJoueursConnectes(void *p) {
 }
 
 void *threadTopScore(void *) {
+    printf("(THREAD TOPSCORE) Starting...\n");
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGQUIT);
     pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+
+    handlerSIGQUIT(SIGQUIT);
 
     for(;;) {
         pause();
@@ -970,11 +980,12 @@ void handlerSIGHUP(int sig) {
 }
 
 void handlerSIGQUIT(int sig) {
+    printf("(THREAD TOPSCORE) handlerSIGQUIT starting\n");
     TOPSCORE topscore;
     char buffscore[5];
     char buffnom[30];
 
-    GetTopScore(cle,&topscore);
+    GetTopScore(cle, &topscore);
 
     sprintf(buffscore, "%4d", topscore.score);
     DessineSprite(8, 15, CHIFFRE_0 + (buffscore[0] == ' ' ? 0 : buffscore[0] - '0'));
