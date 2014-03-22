@@ -1070,6 +1070,7 @@ void sendScore(void*) {
     if(cle) {
         if(EnvoiScore(cle, score) < 1) {
             printf("Game Over\n");
+            pthread_mutex_unlock(&mutexMessage);
             setMessage("Game Over");
         } else {
             printf("Game Over mais new topScore\n");
@@ -1077,7 +1078,6 @@ void sendScore(void*) {
         }
     }
     printf("(THREAD SCORE) Georges a fini d'envoyé le score...\n");
-    pthread_exit(NULL);
 }
 
 ///////////////////////////////////////////////////////////////////
