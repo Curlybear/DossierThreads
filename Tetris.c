@@ -1063,7 +1063,7 @@ void decoServeur(void*) {
 void sendScore(void*) {
     printf("(THREAD SCORE) Envoi du score...\n");
     if(cle) {
-        if(EnvoiScore(cle, score)) {
+        if(EnvoiScore(cle, score) < 1) {
             printf("Game Over\n");
             setMessage("Game Over");
         } else {
