@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
     sigaddset(&mask, SIGUSR1);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
-    sigAct.sa_handler=handlerSIGUSR2;
+    sigAct.sa_handler = handlerSIGUSR2;
     sigAct.sa_flags = 0;
     sigaction(SIGUSR2, &sigAct, NULL);
 
@@ -278,11 +278,14 @@ int main(int argc, char* argv[]) {
     if(pthread_cancel(scoreHandle) != 0) {
         fprintf(stderr, "thread score incancellable\n");
     }
+    pthread_join(scoreHandle, NULL);
+    printf("(THREAD MAIN) Score thread closed\n");
 
     if(pthread_cancel(eventHandle) != 0) {
         fprintf(stderr, "Event handle incancellable\n");
     }
     pthread_join(eventHandle, NULL);
+    printf("(THREAD MAIN) Event thread closed\n");
 
     for(i = 0; i < 14; ++i) {
         for(j = 0; j < 10; ++j) {
@@ -304,6 +307,8 @@ int main(int argc, char* argv[]) {
     if(pthread_cancel(defileMessageHandle) != 0) {
         fprintf(stderr, "threadDefileMessage incancellable\n");
     }
+    pthread_join(defileMessageHandle, NULL);
+    printf("(THREAD MAIN) DefileMessage thread closed\n");
 
     if(pseudo) {
         printf("free(pseudo) : %x\n", pseudo);
@@ -313,8 +318,8 @@ int main(int argc, char* argv[]) {
     if(pthread_cancel(joueursConnectesHandle) != 0) {
         fprintf(stderr, "Erreur de cancel de joueursConnectesHandle\n");
     }
-    printf("DEBUG\n");
-
+    pthread_join(joueursConnectesHandle, NULL);
+    printf("(THREAD MAIN) joueursConnectes thread closed\n");
 
     // Fermeture de la grille de jeu (SDL)
     printf("(THREAD MAIN) Fermeture de la grille...");
@@ -328,9 +333,9 @@ int main(int argc, char* argv[]) {
  * Set le message en cours de défilement
  */
 void setMessage(const char *text) {
-    printf("(SET MESSAGE) start\n");
+    // printf("(SET MESSAGE) start\n");
     pthread_mutex_lock(&mutexMessage);
-    printf("(SET MESSAGE) after lock\n");
+    // printf("(SET MESSAGE) after lock\n");
     indiceCourant = 0;
     if(message != NULL) {
         free(message);
@@ -338,9 +343,9 @@ void setMessage(const char *text) {
     tailleMessage = strlen(text);
     message = (char*) malloc(sizeof(char) * tailleMessage + 1);
     strcpy(message, text);
-    printf("(SET MESSAGE) before unlock\n");
+    // printf("(SET MESSAGE) before unlock\n");
     pthread_mutex_unlock(&mutexMessage);
-    printf("(SET MESSAGE) end\n");
+    // printf("(SET MESSAGE) end\n");
 }
 
 void* threadDefileMessage(void*) {
@@ -355,9 +360,9 @@ void* threadDefileMessage(void*) {
     t.tv_sec = 0;
     t.tv_nsec = 400000000;
     for(;;) {
-        printf("before lock\n");
+        // printf("before lock\n");
         pthread_mutex_lock(&mutexMessage);
-        printf("after lock\n");
+        // printf("after lock\n");
         for(i = 11; i < 19; ++i) {
             DessineLettre(10, i, getCharFromMessage(i - 11 + indiceCourant));
         }
@@ -365,9 +370,9 @@ void* threadDefileMessage(void*) {
         if(indiceCourant > tailleMessage) {
             indiceCourant = 0;
         }
-        printf("before unlock\n");
+        // printf("before unlock\n");
         pthread_mutex_unlock(&mutexMessage);
-        printf("after unlock\n");
+        // printf("after unlock\n");
         nanosleep(&t, NULL);
     }
     pthread_cleanup_pop(1);
@@ -1072,6 +1077,7 @@ void sendScore(void*) {
         }
     }
     printf("(THREAD SCORE) Georges a fini d'envoyé le score...\n");
+    pthread_exit(NULL);
 }
 
 ///////////////////////////////////////////////////////////////////
