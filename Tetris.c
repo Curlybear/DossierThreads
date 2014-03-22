@@ -328,7 +328,9 @@ int main(int argc, char* argv[]) {
  * Set le message en cours de défilement
  */
 void setMessage(const char *text) {
+    printf("(SET MESSAGE) start\n");
     pthread_mutex_lock(&mutexMessage);
+    printf("(SET MESSAGE) after lock\n");
     indiceCourant = 0;
     if(message != NULL) {
         free(message);
@@ -336,7 +338,9 @@ void setMessage(const char *text) {
     tailleMessage = strlen(text);
     message = (char*) malloc(sizeof(char) * tailleMessage + 1);
     strcpy(message, text);
+    printf("(SET MESSAGE) before unlock\n");
     pthread_mutex_unlock(&mutexMessage);
+    printf("(SET MESSAGE) end\n");
 }
 
 void* threadDefileMessage(void*) {
@@ -351,7 +355,9 @@ void* threadDefileMessage(void*) {
     t.tv_sec = 0;
     t.tv_nsec = 400000000;
     for(;;) {
+        printf("before lock\n");
         pthread_mutex_lock(&mutexMessage);
+        printf("after lock\n");
         for(i = 11; i < 19; ++i) {
             DessineLettre(10, i, getCharFromMessage(i - 11 + indiceCourant));
         }
@@ -359,7 +365,9 @@ void* threadDefileMessage(void*) {
         if(indiceCourant > tailleMessage) {
             indiceCourant = 0;
         }
+        printf("before unlock\n");
         pthread_mutex_unlock(&mutexMessage);
+        printf("after unlock\n");
         nanosleep(&t, NULL);
     }
     pthread_cleanup_pop(1);
@@ -1056,8 +1064,10 @@ void sendScore(void*) {
     printf("(THREAD SCORE) Envoi du score...\n");
     if(cle) {
         if(EnvoiScore(cle, score)) {
+            printf("Game Over\n");
             setMessage("Game Over");
         } else {
+            printf("Game Over mais new topScore\n");
             setMessage("Game Over mais vous avez obtenu le nouveau Top Score");
         }
     }
